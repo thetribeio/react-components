@@ -1,0 +1,6 @@
+enum BUTTON_VARIANTS {
+    CONTAINED = 'CONTAINED',
+    OUTLINED = 'OUTLINED',
+}
+
+export default BUTTON_VARIANTS;

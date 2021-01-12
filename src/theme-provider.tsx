@@ -6,7 +6,6 @@ export interface Fonts {
 }
 
 export interface Colors {
-    CONTAINED: string;
     secondary: string;
     light: string;
     grey: string;
@@ -61,7 +60,6 @@ export const theme: Theme = {
         main: 'Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
     },
     colors: {
-        CONTAINED: '#323233',
         secondary: '#45A371',
         light: '#3E3E40',
         grey: '#7D7D80',
