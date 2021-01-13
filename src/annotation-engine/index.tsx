@@ -1,4 +1,4 @@
-import React, { FC, useRef, useState, useEffect, useCallback } from 'react';
+import React, { FC, useCallback, useEffect, useRef, useState } from 'react';
 import Canvas from './style/canvas';
 import Container from './style/container';
 import Image from './style/image';
@@ -10,6 +10,7 @@ export interface AnnotationEngineProps {
     width: number;
     height: number;
     backgroundImgPath?: string;
+    foregroundImagePath?: string;
     id?: string;
     start?: Coordinates;
     end?: Coordinates;
@@ -38,16 +39,17 @@ const areCoordinatesInsideCircle = (
 };
 
 const AnnotationEngine: FC<AnnotationEngineProps> = ({
-    width,
-    height,
     backgroundImgPath,
-    id = 'annotation-engine',
-    start,
     end,
-    setStart,
-    setEnd,
-    onAnnotationEnd,
+    foregroundImagePath,
+    height,
+    id = 'annotation-engine',
     onAnnotationEdit,
+    onAnnotationEnd,
+    setEnd,
+    setStart,
+    start,
+    width,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [renderingContext, setRenderingContext] = useState<CanvasRenderingContext2D | null>(null);
@@ -195,7 +197,8 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
 
     return (
         <Container height={height} width={width}>
-            <Image height={height} src={backgroundImgPath} width={width} />
+            {backgroundImgPath && <Image height={height} src={backgroundImgPath} width={width} />}
+            {foregroundImagePath && <Image height={height} src={foregroundImagePath} width={width} />}
             <Canvas ref={canvasRef} height={height} id={id} width={width} />
         </Container>
     );
