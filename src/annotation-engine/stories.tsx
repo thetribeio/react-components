@@ -5,6 +5,10 @@ import AnnotationEngine, { AnnotationEngineProps, useAnnotationEngine } from '.'
 export default {
     title: 'Components/Annotation Engine',
     component: AnnotationEngine,
+    argTypes: {
+        onAnnotationEnd: { action: 'Annotation end' },
+        onAnnotationEdit: { action: 'Annotation edit' },
+    },
     args: {
         width: 539,
         height: 750,
@@ -12,8 +16,8 @@ export default {
     },
 } as Meta;
 
-const Template: Story<AnnotationEngineProps> = ({ width, height, backgroundImgPath }) => {
-    const props = useAnnotationEngine({ width, height, backgroundImgPath });
+const Template: Story<AnnotationEngineProps> = (args) => {
+    const props = useAnnotationEngine(args);
 
     return <AnnotationEngine {...props} />;
 };

@@ -15,6 +15,8 @@ export interface AnnotationEngineProps {
     end?: Coordinates;
     setStart: (start: Coordinates) => void;
     setEnd: (end: Coordinates) => void;
+    onAnnotationEnd?: (start: Coordinates, end: Coordinates) => void;
+    onAnnotationEdit?: (start: Coordinates, end: Coordinates) => void;
 }
 
 export type Coordinates = {
@@ -44,6 +46,8 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
     end,
     setStart,
     setEnd,
+    onAnnotationEnd,
+    onAnnotationEdit,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [renderingContext, setRenderingContext] = useState<CanvasRenderingContext2D | null>(null);
@@ -118,9 +122,17 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
             };
 
             if (!start || isDraggingStart) {
+                if (isDraggingStart && end && onAnnotationEdit) {
+                    onAnnotationEdit(clickCoordinates, end);
+                }
                 setStart(clickCoordinates);
             } else if (!end || isDraggingEnd) {
                 setEnd(clickCoordinates);
+                if (isDraggingEnd && onAnnotationEdit) {
+                    onAnnotationEdit(start, clickCoordinates);
+                } else if (!isDraggingEnd && onAnnotationEnd) {
+                    onAnnotationEnd(start, clickCoordinates);
+                }
             }
         };
 
@@ -174,7 +186,7 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
                 currentCanvasRef.removeEventListener('mousemove', handleMouseMove);
             }
         };
-    }, [renderingContext, start, end, setStart, setEnd, drawScene]);
+    }, [renderingContext, start, end, setStart, setEnd, drawScene, onAnnotationEnd, onAnnotationEdit]);
 
     // Draw points and lines when start and end coordinates change
     useEffect(() => {
