@@ -22,4 +22,10 @@ const Template: Story<AnnotationEngineProps> = (args) => {
     return <AnnotationEngine {...props} />;
 };
 
-export const WithImageBackground = Template.bind({});
+export const WithBackgroundImage = Template.bind({});
+
+export const WithForegroundImage = Template.bind({});
+WithForegroundImage.args = {
+    foregroundImagePath:
+        'https://lh3.googleusercontent.com/proxy/F2UPMXFEMqlRPx2wHxj4c-NlHEwSHCfT1U4fjjbyuurg069xqtqBWrwGhiHSdfp3-nu22s0DeOiGazZsCRVkewdta29PnawM7cQ0BLppDp4wR8aQkPhG2QxAANWd',
+};

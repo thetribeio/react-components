@@ -5,21 +5,34 @@ export interface UseAnnotationEngineArgs {
     width: number;
     height: number;
     backgroundImgPath?: string;
+    foregroundImagePath?: string;
     onAnnotationEnd?: (start: Coordinates, end: Coordinates) => void;
     onAnnotationEdit?: (start: Coordinates, end: Coordinates) => void;
 }
 
 const useAnnotationEngine = ({
-    width,
-    height,
     backgroundImgPath,
-    onAnnotationEnd,
+    foregroundImagePath,
+    height,
     onAnnotationEdit,
+    onAnnotationEnd,
+    width,
 }: UseAnnotationEngineArgs): AnnotationEngineProps => {
     const [start, setStart] = useState<Coordinates | undefined>(undefined);
     const [end, setEnd] = useState<Coordinates | undefined>(undefined);
 
-    return { start, setStart, end, setEnd, width, height, backgroundImgPath, onAnnotationEnd, onAnnotationEdit };
+    return {
+        backgroundImgPath,
+        end,
+        foregroundImagePath,
+        height,
+        onAnnotationEdit,
+        onAnnotationEnd,
+        setEnd,
+        setStart,
+        start,
+        width,
+    };
 };
 
 export default useAnnotationEngine;
