@@ -1,9 +1,8 @@
 import { Story, Meta } from '@storybook/react';
-
 import React from 'react';
 import BUTTON_COLORS from './button_colors';
 import BUTTON_VARIANTS from './button_variants';
-import Button, { Props as ButtonProps } from '.';
+import Button, { ButtonProps } from '.';
 
 export default {
     title: 'Components/Button',
@@ -31,7 +30,7 @@ export default {
     },
 } as Meta;
 
-const Template: Story<ButtonProps> = ({ ...args }) => <Button {...args} />;
+const Template: Story<ButtonProps> = (args) => <Button {...args} />;
 
 export const Contained = Template.bind({});
 

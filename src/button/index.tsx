@@ -4,13 +4,13 @@ import BUTTON_VARIANTS from './button_variants';
 import OButton from './style/button';
 import Content from './style/content';
 
-export interface Props extends ComponentPropsWithRef<'button'> {
+export interface ButtonProps extends ComponentPropsWithRef<'button'> {
     label: string;
     variant?: BUTTON_VARIANTS;
     color?: BUTTON_COLORS;
 }
 
-const Button: FC<Props> = ({
+const Button: FC<ButtonProps> = ({
     label,
     variant = BUTTON_VARIANTS.CONTAINED,
     color = BUTTON_COLORS.GREEN,
