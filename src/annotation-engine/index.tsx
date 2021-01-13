@@ -22,6 +22,19 @@ export type Coordinates = {
     y: number;
 };
 
+const areCoordinatesInsideCircle = (
+    pointCoordinates: Coordinates,
+    circleCenterCoordinates: Coordinates,
+    radius: number,
+): boolean => {
+    const distance =
+        (pointCoordinates.x - circleCenterCoordinates.x) * (pointCoordinates.x - circleCenterCoordinates.x) +
+        (pointCoordinates.y - circleCenterCoordinates.y) * (pointCoordinates.y - circleCenterCoordinates.y);
+    const squareRadius = radius * radius;
+
+    return distance < squareRadius;
+};
+
 const AnnotationEngine: FC<AnnotationEngineProps> = ({
     width,
     height,
@@ -71,24 +84,71 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
         [renderingContext],
     );
 
+    const drawScene = useCallback(
+        (startCoordinates?: Coordinates, endCoordinates?: Coordinates) => {
+            if (renderingContext) {
+                renderingContext.clearRect(0, 0, width, height);
+
+                if (startCoordinates && endCoordinates) {
+                    drawLine(startCoordinates, endCoordinates);
+                    drawPoint(endCoordinates);
+                }
+
+                if (startCoordinates) {
+                    drawPoint(startCoordinates);
+                }
+            }
+        },
+        [renderingContext, drawLine, drawPoint, height, width],
+    );
+
     // Initialize canvas
     useEffect(() => {
         const currentCanvasRef = canvasRef.current;
 
         let offsetLeft = 0;
         let offsetTop = 0;
+        let isDraggingStart = false;
+        let isDraggingEnd = false;
+
+        const handleMouseUp = (event: MouseEvent) => {
+            const clickCoordinates: Coordinates = {
+                x: event.pageX - offsetLeft,
+                y: event.pageY - offsetTop,
+            };
+
+            if (!start || isDraggingStart) {
+                setStart(clickCoordinates);
+            } else if (!end || isDraggingEnd) {
+                setEnd(clickCoordinates);
+            }
+        };
 
         const handleMouseDown = (event: MouseEvent) => {
-            if (!start) {
-                setStart({
-                    x: event.clientX - offsetLeft,
-                    y: event.clientY - offsetTop,
-                });
-            } else {
-                setEnd({
-                    x: event.clientX - offsetLeft,
-                    y: event.clientY - offsetTop,
-                });
+            const clickCoordinates: Coordinates = {
+                x: event.pageX - offsetLeft,
+                y: event.pageY - offsetTop,
+            };
+
+            if (start && areCoordinatesInsideCircle(start, clickCoordinates, 7)) {
+                isDraggingStart = true;
+            }
+
+            if (end && areCoordinatesInsideCircle(end, clickCoordinates, 7)) {
+                isDraggingEnd = true;
+            }
+        };
+
+        const handleMouseMove = (event: MouseEvent) => {
+            const mouseCoordinates: Coordinates = {
+                x: event.pageX - offsetLeft,
+                y: event.pageY - offsetTop,
+            };
+
+            if (isDraggingStart) {
+                drawScene(mouseCoordinates, end);
+            } else if (isDraggingEnd) {
+                drawScene(start, mouseCoordinates);
             }
         };
 
@@ -97,6 +157,8 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
 
             if (canvasRenderingContext) {
                 currentCanvasRef.addEventListener('mousedown', handleMouseDown);
+                currentCanvasRef.addEventListener('mouseup', handleMouseUp);
+                currentCanvasRef.addEventListener('mousemove', handleMouseMove);
 
                 offsetLeft = currentCanvasRef.offsetLeft;
                 offsetTop = currentCanvasRef.offsetTop;
@@ -107,26 +169,17 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
 
         return () => {
             if (currentCanvasRef) {
+                currentCanvasRef.removeEventListener('mouseup', handleMouseUp);
                 currentCanvasRef.removeEventListener('mousedown', handleMouseDown);
+                currentCanvasRef.removeEventListener('mousemove', handleMouseMove);
             }
         };
-    }, [renderingContext, start, setStart, setEnd]);
+    }, [renderingContext, start, end, setStart, setEnd, drawScene]);
 
     // Draw points and lines when start and end coordinates change
     useEffect(() => {
-        if (renderingContext) {
-            renderingContext.clearRect(0, 0, width, height);
-
-            if (start && end) {
-                drawLine(start, end);
-                drawPoint(end);
-            }
-
-            if (start) {
-                drawPoint(start);
-            }
-        }
-    }, [start, end, renderingContext, drawPoint, drawLine, width, height]);
+        drawScene(start, end);
+    }, [drawScene, start, end]);
 
     return (
         <Container height={height} width={width}>
