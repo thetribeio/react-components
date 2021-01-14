@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Coordinates, AnnotationEngineProps } from '.';
+import { Annotation, Coordinates, AnnotationEngineProps } from '.';
 
 export interface UseAnnotationEngineArgs {
     width: number;
@@ -8,9 +8,11 @@ export interface UseAnnotationEngineArgs {
     foregroundImagePath?: string;
     onAnnotationEnd?: (start: Coordinates, end: Coordinates) => void;
     onAnnotationEdit?: (start: Coordinates, end: Coordinates) => void;
+    annotations: Annotation[];
 }
 
 const useAnnotationEngine = ({
+    annotations,
     backgroundImgPath,
     foregroundImagePath,
     height,
@@ -22,6 +24,7 @@ const useAnnotationEngine = ({
     const [end, setEnd] = useState<Coordinates | undefined>(undefined);
 
     return {
+        annotations,
         backgroundImgPath,
         end,
         foregroundImagePath,
