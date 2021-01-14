@@ -139,21 +139,23 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
 
     const drawPoint = useCallback(
         (coordinates: Coordinates) => {
-            if (renderingContext) {
-                renderingContext.beginPath();
-                renderingContext.fillStyle = '#FFFFFF';
-                renderingContext.arc(coordinates.x, coordinates.y, 7, 0, Math.PI * 2, true);
-                renderingContext.fill();
-                renderingContext.fillStyle = '#000';
-                renderingContext.closePath();
-
-                renderingContext.beginPath();
-                renderingContext.fillStyle = '#0053CC';
-                renderingContext.arc(coordinates.x, coordinates.y, 5, 0, Math.PI * 2, true);
-                renderingContext.fill();
-                renderingContext.fillStyle = '#000';
-                renderingContext.closePath();
+            if (!renderingContext) {
+                return;
             }
+
+            renderingContext.beginPath();
+            renderingContext.fillStyle = '#FFFFFF';
+            renderingContext.arc(coordinates.x, coordinates.y, 7, 0, Math.PI * 2, true);
+            renderingContext.fill();
+            renderingContext.fillStyle = '#000';
+            renderingContext.closePath();
+
+            renderingContext.beginPath();
+            renderingContext.fillStyle = '#0053CC';
+            renderingContext.arc(coordinates.x, coordinates.y, 5, 0, Math.PI * 2, true);
+            renderingContext.fill();
+            renderingContext.fillStyle = '#000';
+            renderingContext.closePath();
         },
         [renderingContext],
     );
