@@ -47,5 +47,15 @@ WithAnnotations.args = {
                 { x: 300, y: 500 },
             ],
         },
+        {
+            name: 'Mesure 3',
+            coordinates: [
+                { x: 300, y: 250 },
+                { x: 450, y: 300 },
+                { x: 440, y: 350 },
+                { x: 290, y: 400 },
+                { x: 300, y: 250 },
+            ],
+        },
     ],
 };
