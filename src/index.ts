@@ -1,4 +1,5 @@
 import AnnotationEngine, {
+    Annotation,
     AnnotationEngineProps,
     Coordinates,
     useAnnotationEngine,
@@ -11,6 +12,7 @@ import Reset from './reset';
 import ThemeProvider from './theme-provider';
 
 export {
+    Annotation,
     AnnotationEngine,
     AnnotationEngineProps,
     Button,
