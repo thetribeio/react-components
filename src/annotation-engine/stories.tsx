@@ -1,6 +1,6 @@
 import { Story, Meta } from '@storybook/react';
 import React from 'react';
-import AnnotationEngine, { AnnotationEngineProps, useAnnotationEngine } from '.';
+import AnnotationEngine, { AnnotationEngineProps, Annotation, useAnnotationEngine } from '.';
 
 export default {
     title: 'Components/Annotation Engine',
@@ -13,6 +13,7 @@ export default {
         width: 539,
         height: 750,
         backgroundImgPath: 'https://posterstore.fr/images/zoom/mountain-road.jpg',
+        annotations: [],
     },
 } as Meta;
 
@@ -26,6 +27,25 @@ export const WithBackgroundImage = Template.bind({});
 
 export const WithForegroundImage = Template.bind({});
 WithForegroundImage.args = {
-    foregroundImagePath:
-        'https://lh3.googleusercontent.com/proxy/F2UPMXFEMqlRPx2wHxj4c-NlHEwSHCfT1U4fjjbyuurg069xqtqBWrwGhiHSdfp3-nu22s0DeOiGazZsCRVkewdta29PnawM7cQ0BLppDp4wR8aQkPhG2QxAANWd',
+    foregroundImagePath: 'https://www.dataplusscience.com/images/5x5grid.png',
+};
+
+export const WithAnnotations = Template.bind({});
+WithAnnotations.args = {
+    annotations: [
+        {
+            name: 'Mesure TEST TEST 1',
+            coordinates: [
+                { x: 100, y: 200 },
+                { x: 300, y: 200 },
+            ],
+        },
+        {
+            name: 'Mesure 2',
+            coordinates: [
+                { x: 200, y: 300 },
+                { x: 300, y: 500 },
+            ],
+        },
+    ],
 };
