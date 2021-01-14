@@ -1,6 +1,6 @@
 import { Story, Meta } from '@storybook/react';
 import React from 'react';
-import AnnotationEngine, { AnnotationEngineProps, Annotation, useAnnotationEngine } from '.';
+import AnnotationEngine, { AnnotationEngineProps, useAnnotationEngine } from '.';
 
 export default {
     title: 'Components/Annotation Engine',
