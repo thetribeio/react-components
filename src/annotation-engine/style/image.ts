@@ -1,14 +1,9 @@
 import styled from 'styled-components';
 
-interface Props {
-    width: number;
-    height: number;
-}
-
-const Image = styled.img<Props>`
+const Image = styled.img`
     position: absolute;
-    width: ${({ width }) => width}px;
-    height: ${({ height }) => height}px;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
 `;
 

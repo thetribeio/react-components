@@ -1,13 +1,10 @@
 import styled from 'styled-components';
 
-interface Props {
-    width: number;
-    height: number;
-}
-
-const Container = styled.div<Props>`
-    width: ${({ width }) => width}px;
-    height: ${({ height }) => height}px;
+const Container = styled.div`
+    position: relative;
+    display: block;
+    width: auto;
+    height: auto;
 `;
 
 export default Container;

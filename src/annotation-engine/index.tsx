@@ -7,8 +7,7 @@ import useAnnotationEngine, { UseAnnotationEngineArgs } from './use-annotation-e
 export { useAnnotationEngine, UseAnnotationEngineArgs };
 
 export interface AnnotationEngineProps {
-    width: number;
-    height: number;
+    className?: string;
     annotations?: Annotation[];
     backgroundImgPath?: string;
     foregroundImagePath?: string;
@@ -78,16 +77,15 @@ const roundRect = (
 const AnnotationEngine: FC<AnnotationEngineProps> = ({
     annotations = [],
     backgroundImgPath,
+    className,
     end,
     foregroundImagePath,
-    height,
     id = 'annotation-engine',
     onAnnotationEdit,
     onAnnotationEnd,
     setEnd,
     setStart,
     start,
-    width,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [renderingContext, setRenderingContext] = useState<CanvasRenderingContext2D | null>(null);
@@ -179,11 +177,13 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
 
     const drawScene = useCallback(
         (startCoordinates?: Coordinates, endCoordinates?: Coordinates) => {
-            if (!renderingContext) {
+            const currentCanvasRef = canvasRef.current;
+
+            if (!renderingContext || !currentCanvasRef) {
                 return;
             }
 
-            renderingContext.clearRect(0, 0, width, height);
+            renderingContext.clearRect(0, 0, currentCanvasRef.width, currentCanvasRef.height);
 
             drawAnnotations();
 
@@ -196,7 +196,7 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
                 drawPoint(startCoordinates);
             }
         },
-        [renderingContext, drawAnnotations, drawLine, drawPoint, height, width],
+        [renderingContext, drawAnnotations, drawLine, drawPoint],
     );
 
     // Initialize canvas
@@ -207,60 +207,66 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
         let isDraggingEnd = false;
 
         const handleMouseUp = (event: MouseEvent) => {
-            if (currentCanvasRef) {
-                const rect = currentCanvasRef.getBoundingClientRect();
-                const clickCoordinates: Coordinates = {
-                    x: event.clientX - rect.left,
-                    y: event.clientY - rect.top,
-                };
+            if (!currentCanvasRef) {
+                return;
+            }
 
-                if (!start || isDraggingStart) {
-                    if (isDraggingStart && end && onAnnotationEdit) {
-                        onAnnotationEdit(clickCoordinates, end);
-                    }
-                    setStart(clickCoordinates);
-                } else if (!end || isDraggingEnd) {
-                    setEnd(clickCoordinates);
-                    if (isDraggingEnd && onAnnotationEdit) {
-                        onAnnotationEdit(start, clickCoordinates);
-                    } else if (!isDraggingEnd && onAnnotationEnd) {
-                        onAnnotationEnd(start, clickCoordinates);
-                    }
+            const rect = currentCanvasRef.getBoundingClientRect();
+            const clickCoordinates: Coordinates = {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top,
+            };
+
+            if (!start || isDraggingStart) {
+                if (isDraggingStart && end && onAnnotationEdit) {
+                    onAnnotationEdit(clickCoordinates, end);
+                }
+                setStart(clickCoordinates);
+            } else if (!end || isDraggingEnd) {
+                setEnd(clickCoordinates);
+                if (isDraggingEnd && onAnnotationEdit) {
+                    onAnnotationEdit(start, clickCoordinates);
+                } else if (!isDraggingEnd && onAnnotationEnd) {
+                    onAnnotationEnd(start, clickCoordinates);
                 }
             }
         };
 
         const handleMouseDown = (event: MouseEvent) => {
-            if (currentCanvasRef) {
-                const rect = currentCanvasRef.getBoundingClientRect();
-                const clickCoordinates: Coordinates = {
-                    x: event.clientX - rect.left,
-                    y: event.clientY - rect.top,
-                };
+            if (!currentCanvasRef) {
+                return;
+            }
 
-                if (start && areCoordinatesInsideCircle(start, clickCoordinates, 7)) {
-                    isDraggingStart = true;
-                }
+            const rect = currentCanvasRef.getBoundingClientRect();
+            const clickCoordinates: Coordinates = {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top,
+            };
 
-                if (end && areCoordinatesInsideCircle(end, clickCoordinates, 7)) {
-                    isDraggingEnd = true;
-                }
+            if (start && areCoordinatesInsideCircle(start, clickCoordinates, 7)) {
+                isDraggingStart = true;
+            }
+
+            if (end && areCoordinatesInsideCircle(end, clickCoordinates, 7)) {
+                isDraggingEnd = true;
             }
         };
 
         const handleMouseMove = (event: MouseEvent) => {
-            if (currentCanvasRef) {
-                const rect = currentCanvasRef.getBoundingClientRect();
-                const mouseCoordinates: Coordinates = {
-                    x: event.clientX - rect.left,
-                    y: event.clientY - rect.top,
-                };
+            if (!currentCanvasRef) {
+                return;
+            }
 
-                if (isDraggingStart) {
-                    drawScene(mouseCoordinates, end);
-                } else if (isDraggingEnd) {
-                    drawScene(start, mouseCoordinates);
-                }
+            const rect = currentCanvasRef.getBoundingClientRect();
+            const mouseCoordinates: Coordinates = {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top,
+            };
+
+            if (isDraggingStart) {
+                drawScene(mouseCoordinates, end);
+            } else if (isDraggingEnd) {
+                drawScene(start, mouseCoordinates);
             }
         };
 
@@ -271,6 +277,9 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
                 currentCanvasRef.addEventListener('mousedown', handleMouseDown);
                 currentCanvasRef.addEventListener('mouseup', handleMouseUp);
                 currentCanvasRef.addEventListener('mousemove', handleMouseMove);
+
+                currentCanvasRef.width = currentCanvasRef.offsetWidth;
+                currentCanvasRef.height = currentCanvasRef.offsetHeight;
 
                 setRenderingContext(canvasRenderingContext);
             }
@@ -291,10 +300,10 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
     }, [drawScene, start, end]);
 
     return (
-        <Container height={height} width={width}>
-            {backgroundImgPath && <Image height={height} src={backgroundImgPath} width={width} />}
-            {foregroundImagePath && <Image height={height} src={foregroundImagePath} width={width} />}
-            <Canvas ref={canvasRef} height={height} id={id} width={width} />
+        <Container className={className}>
+            {backgroundImgPath && <Image src={backgroundImgPath} />}
+            {foregroundImagePath && <Image src={foregroundImagePath} />}
+            <Canvas ref={canvasRef} id={id} />
         </Container>
     );
 };
