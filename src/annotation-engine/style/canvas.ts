@@ -1,14 +1,9 @@
 import styled from 'styled-components';
 
-interface Props {
-    width: number;
-    height: number;
-}
-
-const Canvas = styled.canvas<Props>`
+const Canvas = styled.canvas`
     position: absolute;
-    width: ${({ width }) => width}px;
-    height: ${({ height }) => height}px;
+    width: 100%;
+    height: 100%;
 `;
 
 export default Canvas;

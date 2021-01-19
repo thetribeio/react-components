@@ -1,6 +1,8 @@
 import { Story, Meta } from '@storybook/react';
 import React from 'react';
-import AnnotationEngine, { UseAnnotationEngineArgs, useAnnotationEngine } from '.';
+import styled from 'styled-components';
+import { AnnotationEngineProps, UseAnnotationEngineArgs } from '..';
+import AnnotationEngine, { useAnnotationEngine } from '.';
 
 export default {
     title: 'Components/Annotation Engine',
@@ -17,10 +19,25 @@ export default {
     },
 } as Meta;
 
-const Template: Story<UseAnnotationEngineArgs> = (args) => {
+interface StyledProps extends AnnotationEngineProps {
+    width: number;
+    height: number;
+}
+
+interface StyledArgs extends UseAnnotationEngineArgs {
+    width: number;
+    height: number;
+}
+
+const StyledAnnotationEngine = styled(AnnotationEngine)<StyledProps>`
+    width: ${({ width }) => width}px;
+    height: ${({ height }) => height}px;
+`;
+
+const Template: Story<StyledArgs> = ({ width, height, ...args }) => {
     const props = useAnnotationEngine(args);
 
-    return <AnnotationEngine {...props} />;
+    return <StyledAnnotationEngine height={height} width={width} {...props} />;
 };
 
 export const WithBackgroundImage = Template.bind({});
