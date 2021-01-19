@@ -203,57 +203,64 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
     useEffect(() => {
         const currentCanvasRef = canvasRef.current;
 
-        let offsetLeft = 0;
-        let offsetTop = 0;
         let isDraggingStart = false;
         let isDraggingEnd = false;
 
         const handleMouseUp = (event: MouseEvent) => {
-            const clickCoordinates: Coordinates = {
-                x: event.pageX - offsetLeft,
-                y: event.pageY - offsetTop,
-            };
+            if (currentCanvasRef) {
+                const rect = currentCanvasRef.getBoundingClientRect();
+                const clickCoordinates: Coordinates = {
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top,
+                };
 
-            if (!start || isDraggingStart) {
-                if (isDraggingStart && end && onAnnotationEdit) {
-                    onAnnotationEdit(clickCoordinates, end);
-                }
-                setStart(clickCoordinates);
-            } else if (!end || isDraggingEnd) {
-                setEnd(clickCoordinates);
-                if (isDraggingEnd && onAnnotationEdit) {
-                    onAnnotationEdit(start, clickCoordinates);
-                } else if (!isDraggingEnd && onAnnotationEnd) {
-                    onAnnotationEnd(start, clickCoordinates);
+                if (!start || isDraggingStart) {
+                    if (isDraggingStart && end && onAnnotationEdit) {
+                        onAnnotationEdit(clickCoordinates, end);
+                    }
+                    setStart(clickCoordinates);
+                } else if (!end || isDraggingEnd) {
+                    setEnd(clickCoordinates);
+                    if (isDraggingEnd && onAnnotationEdit) {
+                        onAnnotationEdit(start, clickCoordinates);
+                    } else if (!isDraggingEnd && onAnnotationEnd) {
+                        onAnnotationEnd(start, clickCoordinates);
+                    }
                 }
             }
         };
 
         const handleMouseDown = (event: MouseEvent) => {
-            const clickCoordinates: Coordinates = {
-                x: event.pageX - offsetLeft,
-                y: event.pageY - offsetTop,
-            };
+            if (currentCanvasRef) {
+                const rect = currentCanvasRef.getBoundingClientRect();
+                const clickCoordinates: Coordinates = {
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top,
+                };
 
-            if (start && areCoordinatesInsideCircle(start, clickCoordinates, 7)) {
-                isDraggingStart = true;
-            }
+                if (start && areCoordinatesInsideCircle(start, clickCoordinates, 7)) {
+                    isDraggingStart = true;
+                }
 
-            if (end && areCoordinatesInsideCircle(end, clickCoordinates, 7)) {
-                isDraggingEnd = true;
+                if (end && areCoordinatesInsideCircle(end, clickCoordinates, 7)) {
+                    isDraggingEnd = true;
+                }
             }
         };
 
         const handleMouseMove = (event: MouseEvent) => {
-            const mouseCoordinates: Coordinates = {
-                x: event.pageX - offsetLeft,
-                y: event.pageY - offsetTop,
-            };
+            if (currentCanvasRef) {
+                const rect = currentCanvasRef.getBoundingClientRect();
+                const mouseCoordinates: Coordinates = {
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top,
+                };
 
-            if (isDraggingStart) {
-                drawScene(mouseCoordinates, end);
-            } else if (isDraggingEnd) {
-                drawScene(start, mouseCoordinates);
+                if (isDraggingStart) {
+                    drawScene(mouseCoordinates, end);
+                } else if (isDraggingEnd) {
+                    drawScene(start, mouseCoordinates);
+                }
             }
         };
 
@@ -264,9 +271,6 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
                 currentCanvasRef.addEventListener('mousedown', handleMouseDown);
                 currentCanvasRef.addEventListener('mouseup', handleMouseUp);
                 currentCanvasRef.addEventListener('mousemove', handleMouseMove);
-
-                offsetLeft = currentCanvasRef.offsetLeft;
-                offsetTop = currentCanvasRef.offsetTop;
 
                 setRenderingContext(canvasRenderingContext);
             }

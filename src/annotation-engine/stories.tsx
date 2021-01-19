@@ -1,6 +1,6 @@
 import { Story, Meta } from '@storybook/react';
 import React from 'react';
-import AnnotationEngine, { AnnotationEngineProps, useAnnotationEngine } from '.';
+import AnnotationEngine, { UseAnnotationEngineArgs, useAnnotationEngine } from '.';
 
 export default {
     title: 'Components/Annotation Engine',
@@ -17,7 +17,7 @@ export default {
     },
 } as Meta;
 
-const Template: Story<AnnotationEngineProps> = (args) => {
+const Template: Story<UseAnnotationEngineArgs> = (args) => {
     const props = useAnnotationEngine(args);
 
     return <AnnotationEngine {...props} />;
