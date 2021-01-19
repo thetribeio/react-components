@@ -9,7 +9,7 @@ export { useAnnotationEngine, UseAnnotationEngineArgs };
 export interface AnnotationEngineProps {
     width: number;
     height: number;
-    annotations: Annotation[];
+    annotations?: Annotation[];
     backgroundImgPath?: string;
     foregroundImagePath?: string;
     id?: string;
@@ -76,7 +76,7 @@ const roundRect = (
 };
 
 const AnnotationEngine: FC<AnnotationEngineProps> = ({
-    annotations,
+    annotations = [],
     backgroundImgPath,
     end,
     foregroundImagePath,
