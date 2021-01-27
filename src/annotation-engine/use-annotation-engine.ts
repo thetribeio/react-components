@@ -19,13 +19,31 @@ const useAnnotationEngine = ({
     const [start, setStart] = useState<Coordinates | undefined>(undefined);
     const [end, setEnd] = useState<Coordinates | undefined>(undefined);
 
+    const handleAnnotationEdit = (startCoordinates: Coordinates, endCoordinates: Coordinates) => {
+        setStart(undefined);
+        setEnd(undefined);
+
+        if (onAnnotationEdit) {
+            onAnnotationEdit(startCoordinates, endCoordinates);
+        }
+    };
+
+    const handleAnnotationEnd = (startCoordinates: Coordinates, endCoordinates: Coordinates) => {
+        setStart(undefined);
+        setEnd(undefined);
+
+        if (onAnnotationEnd) {
+            onAnnotationEnd(startCoordinates, endCoordinates);
+        }
+    };
+
     return {
         annotations,
         backgroundImgPath,
         end,
         foregroundImagePath,
-        onAnnotationEdit,
-        onAnnotationEnd,
+        onAnnotationEdit: handleAnnotationEdit,
+        onAnnotationEnd: handleAnnotationEnd,
         setEnd,
         setStart,
         start,
