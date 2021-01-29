@@ -1,20 +1,21 @@
 import { Story, Meta } from '@storybook/react';
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
-import { AnnotationEngineProps, UseAnnotationEngineArgs } from '..';
-import AnnotationEngine, { useAnnotationEngine } from '.';
+import { Annotation, Coordinates } from './models';
+import AnnotationEngine, { AnnotationEngineProps } from '.';
 
 export default {
     title: 'Components/Annotation Engine',
     component: AnnotationEngine,
     argTypes: {
-        onAnnotationEnd: { action: 'Annotation end' },
-        onAnnotationEdit: { action: 'Annotation edit' },
+        onAnnotationEnded: { action: 'Annotation ended' },
     },
     args: {
         width: 539,
         height: 750,
-        backgroundImgPath: 'https://posterstore.fr/images/zoom/mountain-road.jpg',
+        numberOfPoints: 2,
+        backgroundImagePath: 'https://posterstore.fr/images/zoom/mountain-road.jpg',
+        foregroundImagePath: undefined,
         annotations: [],
     },
 } as Meta;
@@ -24,20 +25,13 @@ interface StyledProps extends AnnotationEngineProps {
     height: number;
 }
 
-interface StyledArgs extends UseAnnotationEngineArgs {
-    width: number;
-    height: number;
-}
-
 const StyledAnnotationEngine = styled(AnnotationEngine)<StyledProps>`
     width: ${({ width }) => width}px;
     height: ${({ height }) => height}px;
 `;
 
-const Template: Story<StyledArgs> = ({ width, height, ...args }) => {
-    const props = useAnnotationEngine(args);
-
-    return <StyledAnnotationEngine height={height} width={width} {...props} />;
+const Template: Story<StyledProps> = ({ width, height, ...args }) => {
+    return <StyledAnnotationEngine height={height} width={width} {...args} />;
 };
 
 export const WithBackgroundImage = Template.bind({});
@@ -51,13 +45,15 @@ export const WithAnnotations = Template.bind({});
 WithAnnotations.args = {
     annotations: [
         {
-            name: 'Mesure TEST TEST 1',
+            id: '1',
+            name: 'Mesure 1',
             coordinates: [
                 { x: 100, y: 200 },
                 { x: 300, y: 200 },
             ],
         },
         {
+            id: '2',
             name: 'Mesure 2',
             coordinates: [
                 { x: 200, y: 300 },
@@ -65,14 +61,74 @@ WithAnnotations.args = {
             ],
         },
         {
+            id: '3',
             name: 'Mesure 3',
             coordinates: [
                 { x: 300, y: 250 },
                 { x: 450, y: 300 },
                 { x: 440, y: 350 },
                 { x: 290, y: 400 },
-                { x: 300, y: 250 },
             ],
         },
     ],
 };
+
+export const WithMorePoints = Template.bind({});
+WithMorePoints.args = {
+    numberOfPoints: 4,
+};
+
+const AnnotationsContainer = styled.div`
+    display: flex;
+    flex-direction: row;
+`;
+
+const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
+    const [annotations, setAnnotations] = useState<Annotation[]>([]);
+    const [annotationToEdit, setAnnotationToEdit] = useState<Annotation | undefined>(undefined);
+
+    const handleAnnotationEnded = (annotationPoints: Coordinates[]) => {
+        if (annotationToEdit) {
+            const index = annotations.findIndex((annotation) => annotation.id === annotationToEdit.id);
+
+            if (index >= 0) {
+                setAnnotations([
+                    ...annotations.slice(0, index),
+                    { ...annotationToEdit, coordinates: annotationPoints },
+                    ...annotations.slice(index + 1),
+                ]);
+
+                setAnnotationToEdit(undefined);
+            }
+        } else {
+            const id = `${annotations.length ? Number(annotations[annotations.length - 1].id) + 1 : 1}`;
+
+            setAnnotations([...annotations, { id, name: `Mesure ${id}`, coordinates: annotationPoints }]);
+        }
+    };
+
+    return (
+        <AnnotationsContainer>
+            <StyledAnnotationEngine
+                height={height}
+                width={width}
+                {...args}
+                annotationToEdit={annotationToEdit}
+                annotations={annotations}
+                onAnnotationEnded={handleAnnotationEnded}
+            />
+            <div style={{ color: 'white' }}>
+                {annotations.map((annotation: Annotation) => (
+                    <div key={annotation.id}>
+                        {annotation.name}{' '}
+                        <button onClick={() => setAnnotationToEdit(annotation)} type="button">
+                            EDIT
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </AnnotationsContainer>
+    );
+};
+
+export const WithAnnotationsContainer = WithAnnotationsContainerTemplate.bind({});
