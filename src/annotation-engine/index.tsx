@@ -1,210 +1,76 @@
-import React, { FC, useCallback, useEffect, useRef, useState } from 'react';
+import React, { FC, useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { Annotation, Coordinates } from './models';
 import Canvas from './style/canvas';
 import Container from './style/container';
 import Image from './style/image';
-import useAnnotationEngine, { UseAnnotationEngineArgs } from './use-annotation-engine';
-
-export { useAnnotationEngine, UseAnnotationEngineArgs };
+import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
 
 export interface AnnotationEngineProps {
     className?: string;
-    annotations?: Annotation[];
-    backgroundImgPath?: string;
+    annotations: Annotation[];
+    annotationToEdit?: Annotation;
+    backgroundImagePath: string;
     foregroundImagePath?: string;
     id?: string;
-    start?: Coordinates;
-    end?: Coordinates;
-    setStart: (start: Coordinates) => void;
-    setEnd: (end: Coordinates) => void;
-    onAnnotationEnd?: (start: Coordinates, end: Coordinates) => void;
-    onAnnotationEdit?: (start: Coordinates, end: Coordinates) => void;
+    numberOfPoints?: number;
+    onAnnotationEnded?: (annotationPoints: Coordinates[]) => void;
 }
 
-export type Coordinates = {
-    x: number;
-    y: number;
-};
-
-export type Annotation = {
-    name: string;
-    coordinates: Coordinates[];
-};
-
-const areCoordinatesInsideCircle = (
-    pointCoordinates: Coordinates,
-    circleCenterCoordinates: Coordinates,
-    radius: number,
-): boolean => {
-    const distance =
-        (pointCoordinates.x - circleCenterCoordinates.x) * (pointCoordinates.x - circleCenterCoordinates.x) +
-        (pointCoordinates.y - circleCenterCoordinates.y) * (pointCoordinates.y - circleCenterCoordinates.y);
-    const squareRadius = radius * radius;
-
-    return distance < squareRadius;
-};
-
-const roundRect = (
-    renderingContext: CanvasRenderingContext2D,
-    coordinates: Coordinates,
-    width: number,
-    height: number,
-    radius: number,
-) => {
-    renderingContext.beginPath();
-    renderingContext.moveTo(coordinates.x + radius, coordinates.y);
-    renderingContext.lineTo(coordinates.x + width - radius, coordinates.y);
-    renderingContext.quadraticCurveTo(
-        coordinates.x + width,
-        coordinates.y,
-        coordinates.x + width,
-        coordinates.y + radius,
-    );
-    renderingContext.lineTo(coordinates.x + width, coordinates.y + height);
-    renderingContext.quadraticCurveTo(
-        coordinates.x + width,
-        coordinates.y + height,
-        coordinates.x + width,
-        coordinates.y + height,
-    );
-    renderingContext.lineTo(coordinates.x, coordinates.y + height);
-    renderingContext.quadraticCurveTo(coordinates.x, coordinates.y + height, coordinates.x, coordinates.y + height);
-    renderingContext.lineTo(coordinates.x, coordinates.y + radius);
-    renderingContext.quadraticCurveTo(coordinates.x, coordinates.y, coordinates.x + radius, coordinates.y);
-    renderingContext.fill();
-    renderingContext.closePath();
-};
-
 const AnnotationEngine: FC<AnnotationEngineProps> = ({
+    annotationToEdit,
     annotations = [],
-    backgroundImgPath,
+    backgroundImagePath,
     className,
-    end,
     foregroundImagePath,
     id = 'annotation-engine',
-    onAnnotationEdit,
-    onAnnotationEnd,
-    setEnd,
-    setStart,
-    start,
+    numberOfPoints = 2,
+    onAnnotationEnded,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [renderingContext, setRenderingContext] = useState<CanvasRenderingContext2D | null>(null);
+    const annotationPointsRef = useRef<Coordinates[]>([]);
+    const annotationPointDraggedIndexRef = useRef<number | undefined>();
 
-    const drawAnnotations = useCallback(() => {
-        if (!renderingContext) {
+    useEffect(() => {
+        if (annotationToEdit) {
+            annotationPointsRef.current = annotationToEdit.coordinates;
+        }
+    }, [annotationToEdit]);
+
+    const annotationsToDraw = useMemo<Annotation[]>(() => {
+        if (annotationToEdit) {
+            const annotationToEditIndex = annotations.findIndex(
+                (annotation: Annotation) => annotation.id === annotationToEdit.id,
+            );
+
+            if (annotationToEditIndex >= 0) {
+                return [
+                    ...annotations.slice(0, annotationToEditIndex),
+                    ...annotations.slice(annotationToEditIndex + 1),
+                ];
+            }
+        }
+
+        return [...annotations];
+    }, [annotations, annotationToEdit]);
+
+    const drawScene = useCallback(() => {
+        const currentCanvasRef = canvasRef.current;
+
+        if (!renderingContext || !currentCanvasRef) {
             return;
         }
 
-        annotations.forEach((annotation) => {
-            let previousCoordinates: Coordinates;
+        renderingContext.clearRect(0, 0, currentCanvasRef.width, currentCanvasRef.height);
 
-            annotation.coordinates.forEach((coordinates) => {
-                if (previousCoordinates) {
-                    renderingContext.beginPath();
-                    renderingContext.strokeStyle = '#FFFFFF';
-                    renderingContext.lineCap = 'round';
-                    renderingContext.moveTo(previousCoordinates.x, previousCoordinates.y);
-                    renderingContext.lineTo(coordinates.x, coordinates.y);
-                    renderingContext.lineWidth = 5;
-                    renderingContext.stroke();
-                    renderingContext.closePath();
-                }
+        drawAnnotations(renderingContext, annotationsToDraw);
 
-                previousCoordinates = coordinates;
-            });
-
-            if (annotation.coordinates.length >= 2) {
-                const firstPoint = annotation.coordinates[0];
-                const secondPoint = annotation.coordinates[1];
-
-                const distanceX = secondPoint.x - firstPoint.x;
-                const distanceY = secondPoint.y - firstPoint.y;
-
-                const textSize = renderingContext.measureText(annotation.name);
-
-                renderingContext.save();
-                renderingContext.textAlign = 'left';
-                renderingContext.translate(firstPoint.x, firstPoint.y);
-                renderingContext.rotate(Math.atan2(distanceY, distanceX));
-                renderingContext.fillStyle = '#FFFFFF';
-                roundRect(renderingContext, { x: -2, y: -20 }, textSize.width + 10, 20, 10);
-                renderingContext.fillStyle = '#0053CC';
-                renderingContext.fillText(annotation.name, 2, -5);
-                renderingContext.restore();
-            }
-        });
-    }, [renderingContext, annotations]);
-
-    const drawPoint = useCallback(
-        (coordinates: Coordinates) => {
-            if (!renderingContext) {
-                return;
-            }
-
-            renderingContext.beginPath();
-            renderingContext.fillStyle = '#FFFFFF';
-            renderingContext.arc(coordinates.x, coordinates.y, 7, 0, Math.PI * 2, true);
-            renderingContext.fill();
-            renderingContext.fillStyle = '#000';
-            renderingContext.closePath();
-
-            renderingContext.beginPath();
-            renderingContext.fillStyle = '#0053CC';
-            renderingContext.arc(coordinates.x, coordinates.y, 5, 0, Math.PI * 2, true);
-            renderingContext.fill();
-            renderingContext.fillStyle = '#000';
-            renderingContext.closePath();
-        },
-        [renderingContext],
-    );
-
-    const drawLine = useCallback(
-        (startCoordinates: Coordinates, endCoordinates: Coordinates) => {
-            if (!renderingContext) {
-                return;
-            }
-
-            renderingContext.beginPath();
-            renderingContext.strokeStyle = '#0053CC';
-            renderingContext.moveTo(startCoordinates.x, startCoordinates.y);
-            renderingContext.lineWidth = 3;
-            renderingContext.lineTo(endCoordinates.x, endCoordinates.y);
-            renderingContext.stroke();
-            renderingContext.closePath();
-        },
-        [renderingContext],
-    );
-
-    const drawScene = useCallback(
-        (startCoordinates?: Coordinates, endCoordinates?: Coordinates) => {
-            const currentCanvasRef = canvasRef.current;
-
-            if (!renderingContext || !currentCanvasRef) {
-                return;
-            }
-
-            renderingContext.clearRect(0, 0, currentCanvasRef.width, currentCanvasRef.height);
-
-            drawAnnotations();
-
-            if (startCoordinates && endCoordinates) {
-                drawLine(startCoordinates, endCoordinates);
-                drawPoint(endCoordinates);
-            }
-
-            if (startCoordinates) {
-                drawPoint(startCoordinates);
-            }
-        },
-        [renderingContext, drawAnnotations, drawLine, drawPoint],
-    );
+        drawCurrentAnnotation(renderingContext, annotationPointsRef.current, numberOfPoints);
+    }, [renderingContext, annotationsToDraw, numberOfPoints]);
 
     // Initialize canvas
     useEffect(() => {
         const currentCanvasRef = canvasRef.current;
-
-        let isDraggingStart = false;
-        let isDraggingEnd = false;
 
         const handleMouseUp = (event: MouseEvent) => {
             if (!currentCanvasRef) {
@@ -217,18 +83,29 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
                 y: event.clientY - rect.top,
             };
 
-            if (!start || isDraggingStart) {
-                if (isDraggingStart && end && onAnnotationEdit) {
-                    onAnnotationEdit(clickCoordinates, end);
+            if (
+                annotationPointsRef.current.length < numberOfPoints &&
+                annotationPointDraggedIndexRef.current === undefined
+            ) {
+                annotationPointsRef.current.push(clickCoordinates);
+
+                if (annotationPointsRef.current.length === numberOfPoints && onAnnotationEnded) {
+                    onAnnotationEnded(annotationPointsRef.current);
+                    annotationPointsRef.current = [];
                 }
-                setStart(clickCoordinates);
-            } else if (!end || isDraggingEnd) {
-                setEnd(clickCoordinates);
-                if (isDraggingEnd && onAnnotationEdit) {
-                    onAnnotationEdit(start, clickCoordinates);
-                } else if (!isDraggingEnd && onAnnotationEnd) {
-                    onAnnotationEnd(start, clickCoordinates);
+
+                drawScene();
+            } else if (annotationPointDraggedIndexRef.current !== undefined) {
+                annotationPointsRef.current[annotationPointDraggedIndexRef.current] = clickCoordinates;
+
+                if (annotationPointsRef.current.length === numberOfPoints && onAnnotationEnded) {
+                    onAnnotationEnded(annotationPointsRef.current);
+                    annotationPointsRef.current = [];
                 }
+
+                drawScene();
+
+                annotationPointDraggedIndexRef.current = undefined;
             }
         };
 
@@ -243,12 +120,13 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
                 y: event.clientY - rect.top,
             };
 
-            if (start && areCoordinatesInsideCircle(start, clickCoordinates, 7)) {
-                isDraggingStart = true;
-            }
+            for (let i = 0; i < annotationPointsRef.current.length; i++) {
+                const annotationPoint = annotationPointsRef.current[i];
 
-            if (end && areCoordinatesInsideCircle(end, clickCoordinates, 7)) {
-                isDraggingEnd = true;
+                if (areCoordinatesInsideCircle(annotationPoint, clickCoordinates, 7)) {
+                    annotationPointDraggedIndexRef.current = i;
+                    break;
+                }
             }
         };
 
@@ -263,10 +141,9 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
                 y: event.clientY - rect.top,
             };
 
-            if (isDraggingStart) {
-                drawScene(mouseCoordinates, end);
-            } else if (isDraggingEnd) {
-                drawScene(start, mouseCoordinates);
+            if (annotationPointDraggedIndexRef.current !== undefined) {
+                annotationPointsRef.current[annotationPointDraggedIndexRef.current] = mouseCoordinates;
+                drawScene();
             }
         };
 
@@ -282,6 +159,8 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
                 currentCanvasRef.height = currentCanvasRef.offsetHeight;
 
                 setRenderingContext(canvasRenderingContext);
+
+                drawScene();
             }
         }
 
@@ -292,16 +171,11 @@ const AnnotationEngine: FC<AnnotationEngineProps> = ({
                 currentCanvasRef.removeEventListener('mousemove', handleMouseMove);
             }
         };
-    }, [renderingContext, start, end, setStart, setEnd, drawScene, onAnnotationEnd, onAnnotationEdit]);
-
-    // Draw points and lines when start and end coordinates change
-    useEffect(() => {
-        drawScene(start, end);
-    }, [drawScene, start, end]);
+    }, [renderingContext, drawScene, numberOfPoints, onAnnotationEnded]);
 
     return (
         <Container className={className}>
-            {backgroundImgPath && <Image src={backgroundImgPath} />}
+            <Image src={backgroundImagePath} />
             {foregroundImagePath && <Image src={foregroundImagePath} />}
             <Canvas ref={canvasRef} id={id} />
         </Container>
