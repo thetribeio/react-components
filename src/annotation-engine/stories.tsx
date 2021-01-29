@@ -132,3 +132,6 @@ const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, .
 };
 
 export const WithAnnotationsContainer = WithAnnotationsContainerTemplate.bind({});
+WithAnnotationsContainer.args = {
+    numberOfPoints: 4,
+};
