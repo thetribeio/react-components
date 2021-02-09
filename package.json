@@ -1,6 +1,6 @@
 {
-  "name": "react-components",
-  "version": "1.0.0",
+  "name": "@thetribe/react-components",
+  "version": "v0.1.0",
   "description": "Library of generic React components",
   "main": "dist/bundle.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,7 @@
   "repository": "git@github.com:thetribeio/react-components.git",
   "author": "Simon Galet <simon.galet@thetribe.io>",
   "license": "MIT",
-  "private": true,
+  "private": false,
   "devDependencies": {
     "@babel/core": "7.12.10",
     "@rollup/plugin-commonjs": "17.0.0",
