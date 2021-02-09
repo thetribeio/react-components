@@ -4,22 +4,5 @@
     "group:all",
     "schedule:weekends",
     ":preserveSemverRanges"
-  ],
-  "ignoreDeps": [
-    "eslint",
-    "react-components"
-  ],
-  "ignorePaths": [
-    "docker-compose.yml"
-  ],
-  "packageRules": [
-    {
-      "packageNames": [
-        "babel-loader"
-      ],
-      "paths": [
-        "package.json"
-      ]
-    }
   ]
 }
