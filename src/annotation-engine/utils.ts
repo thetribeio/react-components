@@ -90,14 +90,14 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
 
 export const drawPoint = (renderingContext: CanvasRenderingContext2D, coordinates: Coordinates): void => {
     renderingContext.beginPath();
-    renderingContext.fillStyle = '#FFFFFF';
+    renderingContext.fillStyle = '#FFFFFF80';
     renderingContext.arc(coordinates.x, coordinates.y, 7, 0, Math.PI * 2, true);
     renderingContext.fill();
     renderingContext.fillStyle = '#000';
     renderingContext.closePath();
 
     renderingContext.beginPath();
-    renderingContext.fillStyle = '#0053CC';
+    renderingContext.fillStyle = '#0053CC80';
     renderingContext.arc(coordinates.x, coordinates.y, 5, 0, Math.PI * 2, true);
     renderingContext.fill();
     renderingContext.fillStyle = '#000';
@@ -110,7 +110,7 @@ export const drawLine = (
     endCoordinates: Coordinates,
 ): void => {
     renderingContext.beginPath();
-    renderingContext.strokeStyle = '#0053CC';
+    renderingContext.strokeStyle = '#0053CC80';
     renderingContext.moveTo(startCoordinates.x, startCoordinates.y);
     renderingContext.lineWidth = 3;
     renderingContext.lineTo(endCoordinates.x, endCoordinates.y);
