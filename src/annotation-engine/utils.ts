@@ -58,7 +58,7 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
                 renderingContext.lineCap = 'round';
                 renderingContext.moveTo(previousCoordinates.x, previousCoordinates.y);
                 renderingContext.lineTo(coordinates.x, coordinates.y);
-                renderingContext.lineWidth = 5;
+                renderingContext.lineWidth = 2;
                 renderingContext.stroke();
                 renderingContext.closePath();
             }
@@ -90,14 +90,15 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
 
 export const drawPoint = (renderingContext: CanvasRenderingContext2D, coordinates: Coordinates): void => {
     renderingContext.beginPath();
-    renderingContext.fillStyle = '#FFFFFF80';
+    renderingContext.strokeStyle = '#FFFFFF95';
+    renderingContext.lineWidth = 2;
     renderingContext.arc(coordinates.x, coordinates.y, 7, 0, Math.PI * 2, true);
-    renderingContext.fill();
-    renderingContext.fillStyle = '#000';
+    renderingContext.stroke();
+    renderingContext.strokeStyle = '#000';
     renderingContext.closePath();
 
     renderingContext.beginPath();
-    renderingContext.fillStyle = '#0053CC80';
+    renderingContext.fillStyle = '#0053CC30';
     renderingContext.arc(coordinates.x, coordinates.y, 5, 0, Math.PI * 2, true);
     renderingContext.fill();
     renderingContext.fillStyle = '#000';
@@ -110,9 +111,9 @@ export const drawLine = (
     endCoordinates: Coordinates,
 ): void => {
     renderingContext.beginPath();
-    renderingContext.strokeStyle = '#0053CC80';
+    renderingContext.strokeStyle = '#0053CC';
     renderingContext.moveTo(startCoordinates.x, startCoordinates.y);
-    renderingContext.lineWidth = 3;
+    renderingContext.lineWidth = 2;
     renderingContext.lineTo(endCoordinates.x, endCoordinates.y);
     renderingContext.stroke();
     renderingContext.closePath();
@@ -123,6 +124,10 @@ export const drawCurrentAnnotation = (
     annotationPoints: Coordinates[],
     numberOfPoints: number,
 ): void => {
+    annotationPoints.forEach((annotationPoint: Coordinates) => {
+        drawPoint(renderingContext, annotationPoint);
+    });
+
     if (annotationPoints.length > 1) {
         for (let i = 1; i < annotationPoints.length; i++) {
             drawLine(renderingContext, annotationPoints[i - 1], annotationPoints[i]);
@@ -132,8 +137,4 @@ export const drawCurrentAnnotation = (
     if (numberOfPoints > 2 && annotationPoints.length === numberOfPoints) {
         drawLine(renderingContext, annotationPoints[annotationPoints.length - 1], annotationPoints[0]);
     }
-
-    annotationPoints.forEach((annotationPoint: Coordinates) => {
-        drawPoint(renderingContext, annotationPoint);
-    });
 };
