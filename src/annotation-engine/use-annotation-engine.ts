@@ -27,6 +27,8 @@ const useAnnotationEngine = ({
     useEffect(() => {
         if (annotationToEdit) {
             annotationPointsRef.current = annotationToEdit.coordinates;
+        } else {
+            annotationPointsRef.current = [];
         }
     }, [annotationToEdit]);
 
