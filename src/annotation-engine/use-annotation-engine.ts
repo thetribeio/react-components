@@ -7,6 +7,7 @@ interface UseAnnotationEngineArgs {
     annotationToEdit?: Annotation;
     numberOfPoints: number;
     onAnnotationEnded?: (annotationPoints: Coordinates[]) => void;
+    ref: RefObject<HTMLCanvasElement>;
 }
 
 interface UseAnnotationEngineReturnType {
@@ -18,8 +19,9 @@ const useAnnotationEngine = ({
     annotations,
     numberOfPoints,
     onAnnotationEnded,
+    ref,
 }: UseAnnotationEngineArgs): UseAnnotationEngineReturnType => {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const canvasRef = ref;
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationPointsRef = useRef<Coordinates[]>([]);
     const annotationPointDraggedIndexRef = useRef<number | undefined>();
