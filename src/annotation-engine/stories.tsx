@@ -23,7 +23,7 @@ export default {
 interface StyledProps extends AnnotationEngineProps {
     width: number;
     height: number;
-    ref: RefObject<HTMLCanvasElement>;
+    ref?: RefObject<HTMLCanvasElement>;
 }
 
 const StyledAnnotationEngine = styled(AnnotationEngine)<StyledProps>`
@@ -32,9 +32,7 @@ const StyledAnnotationEngine = styled(AnnotationEngine)<StyledProps>`
 `;
 
 const Template: Story<StyledProps> = ({ width, height, ...args }) => {
-    const canvasRef = useRef(null);
-
-    return <StyledAnnotationEngine height={height} width={width} {...args} ref={canvasRef} />;
+    return <StyledAnnotationEngine height={height} width={width} {...args} />;
 };
 
 export const WithBackgroundImage = Template.bind({});
@@ -92,6 +90,7 @@ const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, .
     const canvasRef = useRef(null);
 
     const handleAnnotationEnded = (annotationPoints: Coordinates[]) => {
+        console.info('canvasRef', canvasRef);
         if (annotationToEdit) {
             const index = annotations.findIndex((annotation) => annotation.id === annotationToEdit.id);
 
