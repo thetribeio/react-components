@@ -31,7 +31,7 @@ const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
         ref: ForwardedRef<HTMLCanvasElement>,
     ) => {
         // calling conditionally a hook is not allowed, so this one will be used if {ref} is null
-        const cRef = useRef(null);
+        const cRef = useRef<HTMLCanvasElement>(null);
         const { canvasRef } = useAnnotationEngine({
             annotationToEdit,
             annotations,
