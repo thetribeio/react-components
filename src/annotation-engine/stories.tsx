@@ -90,7 +90,6 @@ const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, .
     const canvasRef = useRef(null);
 
     const handleAnnotationEnded = (annotationPoints: Coordinates[]) => {
-        console.info('canvasRef', canvasRef);
         if (annotationToEdit) {
             const index = annotations.findIndex((annotation) => annotation.id === annotationToEdit.id);
 
