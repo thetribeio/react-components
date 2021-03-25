@@ -1,5 +1,5 @@
 import { Story, Meta } from '@storybook/react';
-import React, { useState } from 'react';
+import React, { useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
 import { Annotation, Coordinates } from './models';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
@@ -23,6 +23,7 @@ export default {
 interface StyledProps extends AnnotationEngineProps {
     width: number;
     height: number;
+    ref?: RefObject<HTMLCanvasElement>;
 }
 
 const StyledAnnotationEngine = styled(AnnotationEngine)<StyledProps>`
@@ -86,6 +87,7 @@ const AnnotationsContainer = styled.div`
 const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
     const [annotations, setAnnotations] = useState<Annotation[]>([]);
     const [annotationToEdit, setAnnotationToEdit] = useState<Annotation | undefined>(undefined);
+    const canvasRef = useRef(null);
 
     const handleAnnotationEnded = (annotationPoints: Coordinates[]) => {
         if (annotationToEdit) {
@@ -115,6 +117,7 @@ const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, .
                 {...args}
                 annotationToEdit={annotationToEdit}
                 annotations={annotations}
+                ref={canvasRef}
                 onAnnotationEnded={handleAnnotationEnded}
             />
             <div style={{ color: 'white' }}>

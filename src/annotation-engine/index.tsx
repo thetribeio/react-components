@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import React, { FC, forwardRef, ForwardedRef, RefObject, useRef } from 'react';
 import { Annotation, Coordinates } from './models';
 import Canvas from './style/canvas';
 import Container from './style/container';
@@ -16,25 +16,38 @@ export interface AnnotationEngineProps {
     onAnnotationEnded?: (annotationPoints: Coordinates[]) => void;
 }
 
-const AnnotationEngine: FC<AnnotationEngineProps> = ({
-    annotationToEdit,
-    annotations = [],
-    backgroundImagePath,
-    className,
-    foregroundImagePath,
-    id = 'annotation-engine',
-    numberOfPoints = 2,
-    onAnnotationEnded,
-}) => {
-    const { canvasRef } = useAnnotationEngine({ annotationToEdit, annotations, numberOfPoints, onAnnotationEnded });
+const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
+    (
+        {
+            annotationToEdit,
+            annotations = [],
+            backgroundImagePath,
+            className,
+            foregroundImagePath,
+            id = 'annotation-engine',
+            numberOfPoints = 2,
+            onAnnotationEnded,
+        },
+        ref: ForwardedRef<HTMLCanvasElement>,
+    ) => {
+        // calling conditionally a hook is not allowed, so this one will be used if {ref} is null
+        const cRef = useRef<HTMLCanvasElement>(null);
+        const { canvasRef } = useAnnotationEngine({
+            annotationToEdit,
+            annotations,
+            numberOfPoints,
+            onAnnotationEnded,
+            ref: (ref as RefObject<HTMLCanvasElement>) || cRef,
+        });
 
-    return (
-        <Container className={className}>
-            <Image src={backgroundImagePath} />
-            {foregroundImagePath && <Image src={foregroundImagePath} />}
-            <Canvas ref={canvasRef} id={id} />
-        </Container>
-    );
-};
+        return (
+            <Container className={className}>
+                <Image src={backgroundImagePath} />
+                {foregroundImagePath && <Image src={foregroundImagePath} />}
+                <Canvas ref={canvasRef} id={id} />
+            </Container>
+        );
+    },
+);
 
 export default AnnotationEngine;
