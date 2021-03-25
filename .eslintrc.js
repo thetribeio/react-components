@@ -1,11 +1,10 @@
 module.exports = {
     parser: '@typescript-eslint/parser', // Specifies the ESLint parser
     extends: [
-        'plugin:react/recommended',
         '@thetribe/eslint-config-react',
-        'prettier/@typescript-eslint',
-        'plugin:prettier/recommended',
         'plugin:@typescript-eslint/recommended',
+        'prettier',
+        'plugin:react/recommended',
     ],
     plugins: ['react-hooks'],
     parserOptions: {
