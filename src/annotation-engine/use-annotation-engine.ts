@@ -65,7 +65,7 @@ const useAnnotationEngine = ({
         drawAnnotations(renderingContextRef.current, annotationsToDraw);
 
         drawCurrentAnnotation(renderingContextRef.current, annotationPointsRef.current, numberOfPoints);
-    }, [annotationsToDraw, numberOfPoints]);
+    }, [annotationsToDraw, numberOfPoints, canvasRef]);
 
     // Initialize canvas
     useEffect(() => {
@@ -172,7 +172,7 @@ const useAnnotationEngine = ({
                 drawLine(renderingContextRef.current as CanvasRenderingContext2D, startCoordinates, endCoordinates);
                 drawPoint(renderingContextRef.current as CanvasRenderingContext2D, endCoordinates);
                 if (onAnnotationDragged) {
-                    onAnnotationDragged([startCoordinates, draggedCoordinates]);
+                    onAnnotationDragged(annotationPointsRef.current);
                 }
             }
         };
