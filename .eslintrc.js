@@ -1,7 +1,7 @@
 module.exports = {
     parser: '@typescript-eslint/parser', // Specifies the ESLint parser
     extends: [
-        '@thetribe',
+        '@thetribe/eslint-config-react',
         'plugin:@typescript-eslint/recommended',
         'prettier',
         'plugin:react/recommended',
