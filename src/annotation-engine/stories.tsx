@@ -112,12 +112,12 @@ const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, .
     return (
         <AnnotationsContainer>
             <StyledAnnotationEngine
+                ref={canvasRef}
                 height={height}
                 width={width}
                 {...args}
                 annotationToEdit={annotationToEdit}
                 annotations={annotations}
-                ref={canvasRef}
                 onAnnotationEnded={handleAnnotationEnded}
             />
             <div style={{ color: 'white' }}>

@@ -14,6 +14,7 @@ export interface AnnotationEngineProps {
     id?: string;
     numberOfPoints?: number;
     onAnnotationEnded?: (annotationPoints: Coordinates[]) => void;
+    onAnnotationDragged?: (annotationPoints: Coordinates[]) => void;
 }
 
 const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
@@ -27,6 +28,7 @@ const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
             id = 'annotation-engine',
             numberOfPoints = 2,
             onAnnotationEnded,
+            onAnnotationDragged,
         },
         ref: ForwardedRef<HTMLCanvasElement>,
     ) => {
@@ -37,6 +39,7 @@ const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
             annotations,
             numberOfPoints,
             onAnnotationEnded,
+            onAnnotationDragged,
             ref: (ref as RefObject<HTMLCanvasElement>) || cRef,
         });
 

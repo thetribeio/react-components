@@ -7,6 +7,7 @@ interface UseAnnotationEngineArgs {
     annotationToEdit?: Annotation;
     numberOfPoints: number;
     onAnnotationEnded?: (annotationPoints: Coordinates[]) => void;
+    onAnnotationDragged?: (annotationPoints: Coordinates[]) => void;
     ref: RefObject<HTMLCanvasElement>;
 }
 
@@ -19,6 +20,7 @@ const useAnnotationEngine = ({
     annotations,
     numberOfPoints,
     onAnnotationEnded,
+    onAnnotationDragged,
     ref,
 }: UseAnnotationEngineArgs): UseAnnotationEngineReturnType => {
     const canvasRef = ref;
@@ -151,8 +153,14 @@ const useAnnotationEngine = ({
                 if (startCoordinates && endCoordinates) {
                     drawLine(renderingContextRef.current as CanvasRenderingContext2D, startCoordinates, endCoordinates);
                     drawPoint(renderingContextRef.current as CanvasRenderingContext2D, endCoordinates);
+                    if (onAnnotationDragged) {
+                        onAnnotationDragged([startCoordinates, endCoordinates]);
+                    }
                 } else {
                     drawPoint(renderingContextRef.current as CanvasRenderingContext2D, endCoordinates);
+                    if (onAnnotationDragged) {
+                        onAnnotationDragged([endCoordinates]);
+                    }
                 }
             }
             if (annotationPointDraggedIndexRef.current !== undefined) {
@@ -163,6 +171,9 @@ const useAnnotationEngine = ({
                 annotationPointsRef.current[annotationPointDraggedIndexRef.current] = draggedCoordinates;
                 drawLine(renderingContextRef.current as CanvasRenderingContext2D, startCoordinates, endCoordinates);
                 drawPoint(renderingContextRef.current as CanvasRenderingContext2D, endCoordinates);
+                if (onAnnotationDragged) {
+                    onAnnotationDragged([startCoordinates, draggedCoordinates]);
+                }
             }
         };
 
@@ -190,7 +201,7 @@ const useAnnotationEngine = ({
                 currentCanvasRef.removeEventListener('mousemove', handleMouseMove);
             }
         };
-    }, [drawScene, numberOfPoints, onAnnotationEnded]);
+    }, [drawScene, numberOfPoints, onAnnotationEnded, onAnnotationDragged]);
 
     return { canvasRef };
 };
