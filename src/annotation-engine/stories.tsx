@@ -23,7 +23,7 @@ export default {
 interface StyledProps extends AnnotationEngineProps {
     width: number;
     height: number;
-    ref?: RefObject<HTMLCanvasElement>;
+    ref: RefObject<HTMLCanvasElement>;
 }
 
 const StyledAnnotationEngine = styled(AnnotationEngine)<StyledProps>`
@@ -31,9 +31,9 @@ const StyledAnnotationEngine = styled(AnnotationEngine)<StyledProps>`
     height: ${({ height }) => height}px;
 `;
 
-const Template: Story<StyledProps> = ({ width, height, ...args }) => {
-    return <StyledAnnotationEngine height={height} width={width} {...args} />;
-};
+const Template: Story<StyledProps> = ({ width, height, ...args }) => (
+    <StyledAnnotationEngine height={height} width={width} {...args} />
+);
 
 export const WithBackgroundImage = Template.bind({});
 
@@ -87,7 +87,24 @@ const AnnotationsContainer = styled.div`
 const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
     const [annotations, setAnnotations] = useState<Annotation[]>([]);
     const [annotationToEdit, setAnnotationToEdit] = useState<Annotation | undefined>(undefined);
-    const canvasRef = useRef(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    const handleAnnotationDragged = (annotationPoints: Coordinates[]) => {
+        if (canvasRef.current && annotationPoints.length === 2) {
+            const context = canvasRef.current.getContext('2d');
+            if (context) {
+                const [startCoordinates, endCoordinates] = annotationPoints;
+                setAnnotations(annotations);
+                context.beginPath();
+                context.strokeStyle = '#0053CC';
+                context.moveTo(startCoordinates.x + 100, startCoordinates.y + 100);
+                context.lineWidth = 2;
+                context.lineTo(endCoordinates.x + 100, endCoordinates.y + 100);
+                context.stroke();
+                context.closePath();
+            }
+        }
+    };
 
     const handleAnnotationEnded = (annotationPoints: Coordinates[]) => {
         if (annotationToEdit) {
@@ -115,9 +132,10 @@ const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, .
                 height={height}
                 width={width}
                 {...args}
+                ref={canvasRef}
                 annotationToEdit={annotationToEdit}
                 annotations={annotations}
-                ref={canvasRef}
+                onAnnotationDragged={handleAnnotationDragged}
                 onAnnotationEnded={handleAnnotationEnded}
             />
             <div style={{ color: 'white' }}>
@@ -136,5 +154,5 @@ const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, .
 
 export const WithAnnotationsContainer = WithAnnotationsContainerTemplate.bind({});
 WithAnnotationsContainer.args = {
-    numberOfPoints: 4,
+    numberOfPoints: 2,
 };
