@@ -94,7 +94,6 @@ const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, .
             const context = canvasRef.current.getContext('2d');
             if (context) {
                 const [startCoordinates, endCoordinates] = annotationPoints;
-                setAnnotations(annotations);
                 context.beginPath();
                 context.strokeStyle = '#0053CC';
                 context.moveTo(startCoordinates.x + 100, startCoordinates.y + 100);
