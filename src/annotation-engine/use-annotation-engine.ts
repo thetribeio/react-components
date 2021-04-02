@@ -1,6 +1,6 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject } from 'react';
 import { Annotation, Coordinates } from './models';
-import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation, drawLine, drawPoint } from './utils';
+import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
 
 interface UseAnnotationEngineArgs {
     annotations: Annotation[];
@@ -71,37 +71,24 @@ const useAnnotationEngine = ({
     useEffect(() => {
         const currentCanvasRef = canvasRef.current;
 
-        let dragStart = false;
-        let startCoordinates: Coordinates;
-        let endCoordinates: Coordinates;
-
         const handleMouseUp = (event: MouseEvent) => {
             if (!currentCanvasRef) {
                 return;
             }
 
             const rect = currentCanvasRef.getBoundingClientRect();
-            const draggedCoordinates: Coordinates = {
+            const clickCoordinates: Coordinates = {
                 x: event.clientX - rect.left,
                 y: event.clientY - rect.top,
             };
-            dragStart = false;
-            startCoordinates = draggedCoordinates;
 
-            if (
-                annotationPointsRef.current.length < numberOfPoints &&
-                annotationPointDraggedIndexRef.current === undefined
-            ) {
-                annotationPointsRef.current.push(draggedCoordinates);
-
-                if (annotationPointsRef.current.length === numberOfPoints && onAnnotationEnded) {
-                    onAnnotationEnded(annotationPointsRef.current);
-                    annotationPointsRef.current = [];
-                }
+            if (annotationPointDraggedIndexRef.current === undefined && annotationPointsRef.current.length >= numberOfPoints && onAnnotationEnded) {
+                onAnnotationEnded(annotationPointsRef.current);
+                annotationPointsRef.current = [];
 
                 drawScene();
             } else if (annotationPointDraggedIndexRef.current !== undefined) {
-                annotationPointsRef.current[annotationPointDraggedIndexRef.current] = draggedCoordinates;
+                annotationPointsRef.current[annotationPointDraggedIndexRef.current] = clickCoordinates;
 
                 if (annotationPointsRef.current.length === numberOfPoints && onAnnotationEnded) {
                     onAnnotationEnded(annotationPointsRef.current);
@@ -120,18 +107,25 @@ const useAnnotationEngine = ({
             }
 
             const rect = currentCanvasRef.getBoundingClientRect();
-            const draggedCoordinates: Coordinates = {
+            const clickCoordinates: Coordinates = {
                 x: event.clientX - rect.left,
                 y: event.clientY - rect.top,
             };
-            dragStart = true;
 
             for (let i = 0; i < annotationPointsRef.current.length; i++) {
                 const annotationPoint = annotationPointsRef.current[i];
 
-                if (areCoordinatesInsideCircle(annotationPoint, draggedCoordinates, 7)) {
+                if (areCoordinatesInsideCircle(annotationPoint, clickCoordinates, 7)) {
                     annotationPointDraggedIndexRef.current = i;
                     break;
+                }
+            }
+
+            if (annotationPointDraggedIndexRef.current === undefined) {
+                if (annotationPointsRef.current.length < numberOfPoints) {
+                    annotationPointsRef.current.push(clickCoordinates);
+                    annotationPointDraggedIndexRef.current = annotationPointsRef.current.length - 1;
+                    drawScene();
                 }
             }
         };
@@ -142,45 +136,16 @@ const useAnnotationEngine = ({
             }
 
             const rect = currentCanvasRef.getBoundingClientRect();
-            const draggedCoordinates: Coordinates = {
+            const mouseCoordinates: Coordinates = {
                 x: event.clientX - rect.left,
                 y: event.clientY - rect.top,
             };
-            endCoordinates = draggedCoordinates;
 
-            drawScene();
-            if (dragStart) {
-                if (annotationPointDraggedIndexRef.current === undefined) {
-                    if (startCoordinates && endCoordinates) {
-                        drawLine(
-                            renderingContextRef.current as CanvasRenderingContext2D,
-                            startCoordinates,
-                            endCoordinates,
-                        );
-                        drawPoint(renderingContextRef.current as CanvasRenderingContext2D, endCoordinates);
-                        if (onAnnotationDragged) {
-                            onAnnotationDragged([startCoordinates, endCoordinates]);
-                        }
-                    } else {
-                        drawPoint(
-                            renderingContextRef.current as CanvasRenderingContext2D,
-                            startCoordinates || endCoordinates,
-                        );
-                        if (onAnnotationDragged) {
-                            onAnnotationDragged([startCoordinates || endCoordinates]);
-                        }
-                    }
-                } else {
-                    startCoordinates = {
-                        x: annotationPointsRef.current[annotationPointDraggedIndexRef.current].x,
-                        y: annotationPointsRef.current[annotationPointDraggedIndexRef.current].y,
-                    };
-                    annotationPointsRef.current[annotationPointDraggedIndexRef.current] = draggedCoordinates;
-                    drawLine(renderingContextRef.current as CanvasRenderingContext2D, startCoordinates, endCoordinates);
-                    drawPoint(renderingContextRef.current as CanvasRenderingContext2D, endCoordinates);
-                    if (onAnnotationDragged) {
-                        onAnnotationDragged(annotationPointsRef.current);
-                    }
+            if (annotationPointDraggedIndexRef.current !== undefined) {
+                annotationPointsRef.current[annotationPointDraggedIndexRef.current] = mouseCoordinates;
+                drawScene();
+                if (onAnnotationDragged) {
+                    onAnnotationDragged(annotationPointsRef.current);
                 }
             }
         };
@@ -209,7 +174,7 @@ const useAnnotationEngine = ({
                 currentCanvasRef.removeEventListener('mousemove', handleMouseMove);
             }
         };
-    }, [drawScene, numberOfPoints, onAnnotationEnded, onAnnotationDragged]);
+    }, [drawScene, numberOfPoints, onAnnotationEnded, onAnnotationDragged, canvasRef]);
 
     return { canvasRef };
 };
