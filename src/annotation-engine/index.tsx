@@ -5,11 +5,14 @@ import Container from './style/container';
 import Image from './style/image';
 import useAnnotationEngine from './use-annotation-engine';
 
+export type DrawingEvent = 'mousemove' | 'drag';
+
 export interface AnnotationEngineProps {
     className?: string;
     annotations: Annotation[];
     annotationToEdit?: Annotation;
     backgroundImagePath: string;
+    drawingEvent?: DrawingEvent;
     foregroundImagePath?: string;
     id?: string;
     numberOfPoints?: number;
@@ -24,6 +27,7 @@ const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
             annotations = [],
             backgroundImagePath,
             className,
+            drawingEvent = 'drag',
             foregroundImagePath,
             id = 'annotation-engine',
             numberOfPoints = 2,
@@ -37,6 +41,7 @@ const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
         const { canvasRef } = useAnnotationEngine({
             annotationToEdit,
             annotations,
+            drawingEvent,
             numberOfPoints,
             onAnnotationEnded,
             onAnnotationDragged,

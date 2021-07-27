@@ -1,10 +1,12 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject } from 'react';
 import { Annotation, Coordinates } from './models';
-import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
+import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation, drawLine, drawPoint } from './utils';
+import { DrawingEvent } from '.';
 
 interface UseAnnotationEngineArgs {
     annotations: Annotation[];
     annotationToEdit?: Annotation;
+    drawingEvent?: DrawingEvent;
     numberOfPoints: number;
     onAnnotationEnded?: (annotationPoints: Coordinates[]) => void;
     onAnnotationDragged?: (annotationPoints: Coordinates[]) => void;
@@ -18,6 +20,7 @@ interface UseAnnotationEngineReturnType {
 const useAnnotationEngine = ({
     annotationToEdit,
     annotations,
+    drawingEvent,
     numberOfPoints,
     onAnnotationEnded,
     onAnnotationDragged,
@@ -67,6 +70,8 @@ const useAnnotationEngine = ({
         drawCurrentAnnotation(renderingContextRef.current, annotationPointsRef.current, numberOfPoints);
     }, [annotationsToDraw, numberOfPoints, canvasRef]);
 
+    const canIDrawAPoint = () => drawingEvent === 'drag' || annotationPointsRef.current.length > 1;
+
     // Initialize canvas
     useEffect(() => {
         const currentCanvasRef = canvasRef.current;
@@ -82,7 +87,11 @@ const useAnnotationEngine = ({
                 y: event.clientY - rect.top,
             };
 
-            if (annotationPointDraggedIndexRef.current === undefined && annotationPointsRef.current.length >= numberOfPoints && onAnnotationEnded) {
+            if (
+                annotationPointDraggedIndexRef.current === undefined &&
+                annotationPointsRef.current.length >= numberOfPoints &&
+                onAnnotationEnded
+            ) {
                 onAnnotationEnded(annotationPointsRef.current);
                 annotationPointsRef.current = [];
 
