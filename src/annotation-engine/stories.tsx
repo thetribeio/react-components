@@ -85,7 +85,7 @@ const AnnotationsContainer = styled.div`
 `;
 
 const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
-    const [annotations, setAnnotations] = useState<Annotation[]>([]);
+    const [annotations, setAnnotations] = useState<Annotation[]>(args.annotations);
     const [annotationToEdit, setAnnotationToEdit] = useState<Annotation | undefined>(undefined);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -154,4 +154,32 @@ const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, .
 export const WithAnnotationsContainer = WithAnnotationsContainerTemplate.bind({});
 WithAnnotationsContainer.args = {
     numberOfPoints: 2,
+    annotations: [
+        {
+            id: '1',
+            name: 'Mesure 1',
+            coordinates: [
+                { x: 100, y: 200 },
+                { x: 300, y: 200 },
+            ],
+        },
+        {
+            id: '2',
+            name: 'Mesure 2',
+            coordinates: [
+                { x: 200, y: 300 },
+                { x: 300, y: 500 },
+            ],
+        },
+        {
+            id: '3',
+            name: 'Mesure 3',
+            coordinates: [
+                { x: 300, y: 250 },
+                { x: 450, y: 300 },
+                { x: 440, y: 350 },
+                { x: 290, y: 400 },
+            ],
+        },
+    ],
 };
