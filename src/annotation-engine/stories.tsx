@@ -9,8 +9,12 @@ export default {
     component: AnnotationEngine,
     argTypes: {
         onAnnotationEnded: { action: 'Annotation ended' },
+        drawingEvent: {
+            control: { type: 'select', options: ['drag', 'mousemove'], }
+        },
     },
     args: {
+        drawingEvent: 'drag',
         width: 539,
         height: 750,
         numberOfPoints: 2,
@@ -36,6 +40,11 @@ const Template: Story<StyledProps> = ({ width, height, ...args }) => (
 );
 
 export const WithBackgroundImage = Template.bind({});
+
+export const WithMousemoveEvent = Template.bind({});
+WithMousemoveEvent.args = {
+    drawingEvent: 'mousemove',
+}
 
 export const WithForegroundImage = Template.bind({});
 WithForegroundImage.args = {
