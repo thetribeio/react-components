@@ -1,6 +1,6 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject } from 'react';
 import { Annotation, Coordinates } from './models';
-import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation, drawLine, drawPoint } from './utils';
+import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
 import { DrawingEvent } from '.';
 
 interface UseAnnotationEngineArgs {
@@ -70,8 +70,6 @@ const useAnnotationEngine = ({
         drawCurrentAnnotation(renderingContextRef.current, annotationPointsRef.current, numberOfPoints);
     }, [annotationsToDraw, numberOfPoints, canvasRef]);
 
-    const canIDrawAPoint = () => drawingEvent === 'drag' || annotationPointsRef.current.length > 1;
-
     // Initialize canvas
     useEffect(() => {
         const currentCanvasRef = canvasRef.current;
@@ -102,11 +100,16 @@ const useAnnotationEngine = ({
                 if (annotationPointsRef.current.length === numberOfPoints && onAnnotationEnded) {
                     onAnnotationEnded(annotationPointsRef.current);
                     annotationPointsRef.current = [];
+                    if (drawingEvent === 'mousemove') {
+                        annotationPointDraggedIndexRef.current = undefined;
+                    }
                 }
 
                 drawScene();
 
-                annotationPointDraggedIndexRef.current = undefined;
+                if (drawingEvent === 'drag') {
+                    annotationPointDraggedIndexRef.current = undefined;
+                }
             }
         };
 
@@ -151,7 +154,11 @@ const useAnnotationEngine = ({
             };
 
             if (annotationPointDraggedIndexRef.current !== undefined) {
-                annotationPointsRef.current[annotationPointDraggedIndexRef.current] = mouseCoordinates;
+                if (drawingEvent === 'drag') {
+                    annotationPointsRef.current[annotationPointDraggedIndexRef.current] = mouseCoordinates;
+                } else if (drawingEvent === 'mousemove') {
+                    annotationPointsRef.current[annotationPointDraggedIndexRef.current + 1] = mouseCoordinates;
+                }
                 drawScene();
                 if (onAnnotationDragged) {
                     onAnnotationDragged(annotationPointsRef.current);
