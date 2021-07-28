@@ -1,7 +1,7 @@
 import { Story, Meta } from '@storybook/react';
 import React, { useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
-import { Annotation, Coordinates } from './models';
+import { Annotation, Coordinates, DrawingEvent } from './models';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
 
 export default {
@@ -10,11 +10,11 @@ export default {
     argTypes: {
         onAnnotationEnded: { action: 'Annotation ended' },
         drawingEvent: {
-            control: { type: 'select', options: ['drag', 'mousemove'], }
+            control: { type: 'select', options: Object.values(DrawingEvent), }
         },
     },
     args: {
-        drawingEvent: 'drag',
+        drawingEvent: DrawingEvent.DRAG,
         width: 539,
         height: 750,
         numberOfPoints: 2,
@@ -43,7 +43,7 @@ export const WithBackgroundImage = Template.bind({});
 
 export const WithMousemoveEvent = Template.bind({});
 WithMousemoveEvent.args = {
-    drawingEvent: 'mousemove',
+    drawingEvent: DrawingEvent.MOUSEMOVE,
 }
 
 export const WithForegroundImage = Template.bind({});
@@ -93,8 +93,8 @@ const AnnotationsContainer = styled.div`
     flex-direction: row;
 `;
 
-const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
-    const [annotations, setAnnotations] = useState<Annotation[]>(args.annotations);
+const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, annotations: initAnnotations, ...args }) => {
+    const [annotations, setAnnotations] = useState<Annotation[]>(initAnnotations);
     const [annotationToEdit, setAnnotationToEdit] = useState<Annotation | undefined>(undefined);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
