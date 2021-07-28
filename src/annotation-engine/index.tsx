@@ -25,7 +25,7 @@ const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
             annotations = [],
             backgroundImagePath,
             className,
-            drawingEvent = 'drag',
+            drawingEvent = DrawingEvent.DRAG,
             foregroundImagePath,
             id = 'annotation-engine',
             numberOfPoints = 2,
