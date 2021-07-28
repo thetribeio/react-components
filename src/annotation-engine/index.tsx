@@ -1,11 +1,9 @@
 import React, { FC, forwardRef, ForwardedRef, RefObject, useRef } from 'react';
-import { Annotation, Coordinates } from './models';
+import { Annotation, Coordinates, DrawingEvent } from './models';
 import Canvas from './style/canvas';
 import Container from './style/container';
 import Image from './style/image';
 import useAnnotationEngine from './use-annotation-engine';
-
-export type DrawingEvent = 'mousemove' | 'drag';
 
 export interface AnnotationEngineProps {
     className?: string;
