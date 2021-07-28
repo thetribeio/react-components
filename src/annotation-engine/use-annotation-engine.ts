@@ -1,10 +1,11 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject } from 'react';
-import { Annotation, Coordinates } from './models';
+import { Annotation, Coordinates, DrawingEvent } from './models';
 import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
 
 interface UseAnnotationEngineArgs {
     annotations: Annotation[];
     annotationToEdit?: Annotation;
+    drawingEvent?: DrawingEvent;
     numberOfPoints: number;
     onAnnotationEnded?: (annotationPoints: Coordinates[]) => void;
     onAnnotationDragged?: (annotationPoints: Coordinates[]) => void;
@@ -18,6 +19,7 @@ interface UseAnnotationEngineReturnType {
 const useAnnotationEngine = ({
     annotationToEdit,
     annotations,
+    drawingEvent,
     numberOfPoints,
     onAnnotationEnded,
     onAnnotationDragged,
@@ -82,7 +84,11 @@ const useAnnotationEngine = ({
                 y: event.clientY - rect.top,
             };
 
-            if (annotationPointDraggedIndexRef.current === undefined && annotationPointsRef.current.length >= numberOfPoints && onAnnotationEnded) {
+            if (
+                annotationPointDraggedIndexRef.current === undefined &&
+                annotationPointsRef.current.length >= numberOfPoints &&
+                onAnnotationEnded
+            ) {
                 onAnnotationEnded(annotationPointsRef.current);
                 annotationPointsRef.current = [];
 
@@ -93,11 +99,16 @@ const useAnnotationEngine = ({
                 if (annotationPointsRef.current.length === numberOfPoints && onAnnotationEnded) {
                     onAnnotationEnded(annotationPointsRef.current);
                     annotationPointsRef.current = [];
+                    if (drawingEvent === DrawingEvent.MOUSEMOVE) {
+                        annotationPointDraggedIndexRef.current = undefined;
+                    }
                 }
 
                 drawScene();
 
-                annotationPointDraggedIndexRef.current = undefined;
+                if (drawingEvent === DrawingEvent.DRAG) {
+                    annotationPointDraggedIndexRef.current = undefined;
+                }
             }
         };
 
@@ -142,7 +153,11 @@ const useAnnotationEngine = ({
             };
 
             if (annotationPointDraggedIndexRef.current !== undefined) {
-                annotationPointsRef.current[annotationPointDraggedIndexRef.current] = mouseCoordinates;
+                if (drawingEvent === DrawingEvent.DRAG) {
+                    annotationPointsRef.current[annotationPointDraggedIndexRef.current] = mouseCoordinates;
+                } else if (drawingEvent === DrawingEvent.MOUSEMOVE) {
+                    annotationPointsRef.current[annotationPointDraggedIndexRef.current + 1] = mouseCoordinates;
+                }
                 drawScene();
                 if (onAnnotationDragged) {
                     onAnnotationDragged(annotationPointsRef.current);
@@ -156,7 +171,7 @@ const useAnnotationEngine = ({
             if (canvasRenderingContext) {
                 currentCanvasRef.addEventListener('mousedown', handleMouseDown);
                 currentCanvasRef.addEventListener('mouseup', handleMouseUp);
-                currentCanvasRef.addEventListener('mousemove', handleMouseMove);
+                currentCanvasRef.addEventListener(DrawingEvent.MOUSEMOVE, handleMouseMove);
 
                 currentCanvasRef.width = currentCanvasRef.offsetWidth;
                 currentCanvasRef.height = currentCanvasRef.offsetHeight;
@@ -171,7 +186,7 @@ const useAnnotationEngine = ({
             if (currentCanvasRef) {
                 currentCanvasRef.removeEventListener('mouseup', handleMouseUp);
                 currentCanvasRef.removeEventListener('mousedown', handleMouseDown);
-                currentCanvasRef.removeEventListener('mousemove', handleMouseMove);
+                currentCanvasRef.removeEventListener(DrawingEvent.MOUSEMOVE, handleMouseMove);
             }
         };
     }, [drawScene, numberOfPoints, onAnnotationEnded, onAnnotationDragged, canvasRef]);
