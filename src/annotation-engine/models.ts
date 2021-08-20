@@ -8,8 +8,3 @@ export type Annotation = {
     name: string;
     coordinates: Coordinates[];
 };
-
-export enum DrawingEvent {
-    MOUSEMOVE = 'mousemove',
-    DRAG = 'drag',
-}

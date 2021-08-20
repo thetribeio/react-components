@@ -1,5 +1,5 @@
 import React, { FC, forwardRef, ForwardedRef, RefObject, useRef } from 'react';
-import { Annotation, Coordinates, DrawingEvent } from './models';
+import { Annotation, Coordinates } from './models';
 import Canvas from './style/canvas';
 import Container from './style/container';
 import Image from './style/image';
@@ -10,7 +10,6 @@ export interface AnnotationEngineProps {
     annotations: Annotation[];
     annotationToEdit?: Annotation;
     backgroundImagePath: string;
-    drawingEvent?: DrawingEvent;
     foregroundImagePath?: string;
     id?: string;
     numberOfPoints?: number;
@@ -25,7 +24,6 @@ const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
             annotations = [],
             backgroundImagePath,
             className,
-            drawingEvent = DrawingEvent.DRAG,
             foregroundImagePath,
             id = 'annotation-engine',
             numberOfPoints = 2,
@@ -39,7 +37,6 @@ const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
         const { canvasRef } = useAnnotationEngine({
             annotationToEdit,
             annotations,
-            drawingEvent,
             numberOfPoints,
             onAnnotationEnded,
             onAnnotationDragged,
