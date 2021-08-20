@@ -15,7 +15,7 @@ export interface Handles {
 }
 
 export type PointId = number;
-export type Events = MouseDownEvent | MouseDownOnExistingPointEvent | MouseMove | MouseUp | MouseUpOnExistingPointEvent;
+export type Events = MouseDownEvent | MouseDownOnExistingPointEvent | MouseMove | MouseUp | MouseUpOnExistingPointEvent | MouseWheelEvent;
 export type OnEvent = (event: Events, operations: Operations) => void;
 
 export interface MouseDownEvent {
@@ -48,6 +48,12 @@ export interface MouseUpOnExistingPointEvent {
     at: Coordinates;
     pointIds: Array<PointId>;
     currentGeometry: Array<Coordinates>;
+}
+
+export interface MouseWheelEvent {
+    type: 'mouse_wheel_event';
+    deltaX: number;
+    deltaY: number;
 }
 
 export interface Operations {
@@ -207,6 +213,14 @@ const useAnnotationEngine = ({
             }, operations);
         });
 
+        const handleMouseWheel = (event: WheelEvent) => handleEvent(() => {
+            onEvent({
+                type: 'mouse_wheel_event',
+                deltaX: event.deltaX,
+                deltaY: event.deltaY,
+            }, operations);
+        });
+
         if (currentCanvasRef) {
             const canvasRenderingContext = currentCanvasRef.getContext('2d');
 
@@ -214,6 +228,7 @@ const useAnnotationEngine = ({
                 currentCanvasRef.addEventListener('mousedown', handleMouseDown);
                 currentCanvasRef.addEventListener('mouseup', handleMouseUp);
                 currentCanvasRef.addEventListener('mousemove', handleMouseMove);
+                currentCanvasRef.addEventListener('wheel', handleMouseWheel);
 
                 currentCanvasRef.width = currentCanvasRef.offsetWidth;
                 currentCanvasRef.height = currentCanvasRef.offsetHeight;
@@ -229,6 +244,7 @@ const useAnnotationEngine = ({
                 currentCanvasRef.removeEventListener('mouseup', handleMouseUp);
                 currentCanvasRef.removeEventListener('mousedown', handleMouseDown);
                 currentCanvasRef.removeEventListener('mousemove', handleMouseMove);
+                currentCanvasRef.removeEventListener('wheel', handleMouseWheel);
             }
         };
     }, [drawScene, canvasRef, onEvent]);
