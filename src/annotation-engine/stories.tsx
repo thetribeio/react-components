@@ -1,7 +1,7 @@
 import { Story, Meta } from '@storybook/react';
 import React, { useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
-import { Annotation, Coordinates, DrawingEvent } from './models';
+import { Annotation, Coordinates } from './models';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
 
 export default {
@@ -9,12 +9,8 @@ export default {
     component: AnnotationEngine,
     argTypes: {
         onAnnotationEnded: { action: 'Annotation ended' },
-        drawingEvent: {
-            control: { type: 'select', options: Object.values(DrawingEvent), }
-        },
     },
     args: {
-        drawingEvent: DrawingEvent.DRAG,
         width: 539,
         height: 750,
         numberOfPoints: 2,
@@ -40,11 +36,6 @@ const Template: Story<StyledProps> = ({ width, height, ...args }) => (
 );
 
 export const WithBackgroundImage = Template.bind({});
-
-export const WithMousemoveEvent = Template.bind({});
-WithMousemoveEvent.args = {
-    drawingEvent: DrawingEvent.MOUSEMOVE,
-}
 
 export const WithForegroundImage = Template.bind({});
 WithForegroundImage.args = {
@@ -93,8 +84,8 @@ const AnnotationsContainer = styled.div`
     flex-direction: row;
 `;
 
-const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, annotations: initAnnotations, ...args }) => {
-    const [annotations, setAnnotations] = useState<Annotation[]>(initAnnotations);
+const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
+    const [annotations, setAnnotations] = useState<Annotation[]>([]);
     const [annotationToEdit, setAnnotationToEdit] = useState<Annotation | undefined>(undefined);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -163,32 +154,4 @@ const WithAnnotationsContainerTemplate: Story<StyledProps> = ({ width, height, a
 export const WithAnnotationsContainer = WithAnnotationsContainerTemplate.bind({});
 WithAnnotationsContainer.args = {
     numberOfPoints: 2,
-    annotations: [
-        {
-            id: '1',
-            name: 'Mesure 1',
-            coordinates: [
-                { x: 100, y: 200 },
-                { x: 300, y: 200 },
-            ],
-        },
-        {
-            id: '2',
-            name: 'Mesure 2',
-            coordinates: [
-                { x: 200, y: 300 },
-                { x: 300, y: 500 },
-            ],
-        },
-        {
-            id: '3',
-            name: 'Mesure 3',
-            coordinates: [
-                { x: 300, y: 250 },
-                { x: 450, y: 300 },
-                { x: 440, y: 350 },
-                { x: 290, y: 400 },
-            ],
-        },
-    ],
 };
