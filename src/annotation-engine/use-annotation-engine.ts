@@ -1,32 +1,85 @@
-import { useRef, useMemo, useEffect, useCallback, RefObject } from 'react';
+import { useRef, useMemo, useEffect, useCallback, RefObject, useImperativeHandle, ForwardedRef } from 'react';
 import { Annotation, Coordinates } from './models';
 import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
 
 interface UseAnnotationEngineArgs {
     annotations: Annotation[];
     annotationToEdit?: Annotation;
-    numberOfPoints: number;
-    onAnnotationEnded?: (annotationPoints: Coordinates[]) => void;
-    onAnnotationDragged?: (annotationPoints: Coordinates[]) => void;
-    ref: RefObject<HTMLCanvasElement>;
+    onEvent: OnEvent;
+    canvasRef: RefObject<HTMLCanvasElement>;
+    ref: ForwardedRef<Handles>;
 }
 
-interface UseAnnotationEngineReturnType {
-    canvasRef: RefObject<HTMLCanvasElement>;
+export interface Handles {
+    cancelCreation: () => void;
+}
+
+export type PointId = number;
+export type Events = MouseDownEvent | MouseDownOnExistingPointEvent | MouseMove | MouseUp | MouseUpOnExistingPointEvent;
+export type OnEvent = (event: Events, operations: Operations) => void;
+
+export interface MouseDownEvent {
+    type: 'mouse_down_event';
+    at: Coordinates;
+    currentGeometry: Array<Coordinates>;
+}
+
+export interface MouseDownOnExistingPointEvent {
+    type: 'mouse_down_on_existing_point_event';
+    at: Coordinates;
+    pointIds: Array<PointId>;
+    currentGeometry: Array<Coordinates>;
+}
+
+export interface MouseMove {
+    type: 'mouse_move_event';
+    to: Coordinates;
+    currentGeometry: Array<Coordinates>;
+}
+
+export interface MouseUp {
+    type: 'mouse_up_event';
+    at: Coordinates;
+    currentGeometry: Array<Coordinates>;
+}
+
+export interface MouseUpOnExistingPointEvent {
+    type: 'mouse_up_on_existing_point_event';
+    at: Coordinates;
+    pointIds: Array<PointId>;
+    currentGeometry: Array<Coordinates>;
+}
+
+export interface Operations {
+    addPoint(at: Coordinates): PointId;
+    movePoint(pointId: PointId, to: Coordinates): void;
+    finishCurrentLine(): void;
+    drawOnCanvas(draw: (context2d: CanvasRenderingContext2D) => void): void;
 }
 
 const useAnnotationEngine = ({
     annotationToEdit,
     annotations,
-    numberOfPoints,
-    onAnnotationEnded,
-    onAnnotationDragged,
+    onEvent,
+    canvasRef,
     ref,
-}: UseAnnotationEngineArgs): UseAnnotationEngineReturnType => {
-    const canvasRef = ref;
+}: UseAnnotationEngineArgs): void => {
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationPointsRef = useRef<Coordinates[]>([]);
-    const annotationPointDraggedIndexRef = useRef<number | undefined>();
+
+    const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
+        const rect = canvas.getBoundingClientRect();
+
+        return {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+        };
+    };
+    
+    const detectClickOnExistingPoints = (coordinates: Array<Coordinates>, clickAt: Coordinates): Array<PointId> => coordinates
+            .map((coordinate, idx) => ({coordinate, idx}))
+            .filter(({coordinate}) => areCoordinatesInsideCircle(coordinate, clickAt, 7))
+            .map(({idx}) => idx)
 
     useEffect(() => {
         if (annotationToEdit) {
@@ -64,91 +117,95 @@ const useAnnotationEngine = ({
 
         drawAnnotations(renderingContextRef.current, annotationsToDraw);
 
-        drawCurrentAnnotation(renderingContextRef.current, annotationPointsRef.current, numberOfPoints);
-    }, [annotationsToDraw, numberOfPoints, canvasRef]);
+        drawCurrentAnnotation(renderingContextRef.current, annotationPointsRef.current, annotationPointsRef.current === annotationToEdit?.coordinates);
+    }, [annotationsToDraw, canvasRef, annotationToEdit]);
+
+    useImperativeHandle(ref, () => ({
+        cancelCreation() {
+            if (annotationToEdit === undefined) {
+                annotationPointsRef.current = [];
+                drawScene();
+            }
+        }
+    }));
 
     // Initialize canvas
     useEffect(() => {
         const currentCanvasRef = canvasRef.current;
 
-        const handleMouseUp = (event: MouseEvent) => {
-            if (!currentCanvasRef) {
-                return;
-            }
-
-            const rect = currentCanvasRef.getBoundingClientRect();
-            const clickCoordinates: Coordinates = {
-                x: event.clientX - rect.left,
-                y: event.clientY - rect.top,
-            };
-
-            if (annotationPointDraggedIndexRef.current === undefined && annotationPointsRef.current.length >= numberOfPoints && onAnnotationEnded) {
-                onAnnotationEnded(annotationPointsRef.current);
+        let delayDraw: Array<(context2d: CanvasRenderingContext2D) => void> = [];
+        const operations: Operations = {
+            addPoint: (at: Coordinates) => annotationPointsRef.current.push(at) - 1,
+            movePoint: (pointId: PointId, to: Coordinates) => {
+                annotationPointsRef.current[pointId] = to;
+            },
+            finishCurrentLine: () => {
                 annotationPointsRef.current = [];
-
-                drawScene();
-            } else if (annotationPointDraggedIndexRef.current !== undefined) {
-                annotationPointsRef.current[annotationPointDraggedIndexRef.current] = clickCoordinates;
-
-                if (annotationPointsRef.current.length === numberOfPoints && onAnnotationEnded) {
-                    onAnnotationEnded(annotationPointsRef.current);
-                    annotationPointsRef.current = [];
-                }
-
-                drawScene();
-
-                annotationPointDraggedIndexRef.current = undefined;
+            },
+            drawOnCanvas: (draw: (context2d: CanvasRenderingContext2D) => void) => {
+                delayDraw.push(draw);
             }
         };
 
-        const handleMouseDown = (event: MouseEvent) => {
-            if (!currentCanvasRef) {
-                return;
-            }
-
-            const rect = currentCanvasRef.getBoundingClientRect();
-            const clickCoordinates: Coordinates = {
-                x: event.clientX - rect.left,
-                y: event.clientY - rect.top,
-            };
-
-            for (let i = 0; i < annotationPointsRef.current.length; i++) {
-                const annotationPoint = annotationPointsRef.current[i];
-
-                if (areCoordinatesInsideCircle(annotationPoint, clickCoordinates, 7)) {
-                    annotationPointDraggedIndexRef.current = i;
-                    break;
-                }
-            }
-
-            if (annotationPointDraggedIndexRef.current === undefined) {
-                if (annotationPointsRef.current.length < numberOfPoints) {
-                    annotationPointsRef.current.push(clickCoordinates);
-                    annotationPointDraggedIndexRef.current = annotationPointsRef.current.length - 1;
-                    drawScene();
-                }
-            }
-        };
-
-        const handleMouseMove = (event: MouseEvent) => {
-            if (!currentCanvasRef) {
-                return;
-            }
-
-            const rect = currentCanvasRef.getBoundingClientRect();
-            const mouseCoordinates: Coordinates = {
-                x: event.clientX - rect.left,
-                y: event.clientY - rect.top,
-            };
-
-            if (annotationPointDraggedIndexRef.current !== undefined) {
-                annotationPointsRef.current[annotationPointDraggedIndexRef.current] = mouseCoordinates;
+        const handleEvent = (handler: (canvas: HTMLCanvasElement) => void) => {
+            if (currentCanvasRef) {
+                handler(currentCanvasRef);
                 drawScene();
-                if (onAnnotationDragged) {
-                    onAnnotationDragged(annotationPointsRef.current);
+                const context2d = currentCanvasRef.getContext('2d');
+                if (context2d) {
+                    delayDraw.forEach(draw => draw(context2d));
                 }
+                delayDraw = [];
             }
         };
+        
+        const handleMouseUp = (event: MouseEvent) => handleEvent((canvas) => {
+            const eventCoords = canvasCoordinateOf(canvas, event);
+            const isClickOnExistingPointsIdx = detectClickOnExistingPoints(annotationPointsRef.current, eventCoords);
+            
+            if (isClickOnExistingPointsIdx.length > 0) {
+                onEvent({
+                    type: 'mouse_up_on_existing_point_event',
+                    at: eventCoords,
+                    pointIds: isClickOnExistingPointsIdx,
+                    currentGeometry: [...annotationPointsRef.current],
+                }, operations);
+            } else {
+                onEvent({
+                    type: 'mouse_up_event',
+                    at: eventCoords,
+                    currentGeometry: [...annotationPointsRef.current],
+                }, operations);
+            }
+        });
+
+        const handleMouseDown = (event: MouseEvent) => handleEvent((canvas) => {
+            const eventCoords = canvasCoordinateOf(canvas, event);
+            const isClickOnExistingPointsIdx = detectClickOnExistingPoints(annotationPointsRef.current, eventCoords);
+            
+            if (isClickOnExistingPointsIdx.length > 0) {
+                onEvent({
+                    type: 'mouse_down_on_existing_point_event',
+                    at: eventCoords,
+                    pointIds: isClickOnExistingPointsIdx,
+                    currentGeometry: [...annotationPointsRef.current],
+                }, operations);
+            } else {
+                onEvent({
+                    type: 'mouse_down_event',
+                    at: eventCoords,
+                    currentGeometry: [...annotationPointsRef.current],
+                }, operations);
+            }
+        });
+
+        const handleMouseMove = (event: MouseEvent) => handleEvent((canvas) => {
+            onEvent({
+                type: 'mouse_move_event',
+                to: canvasCoordinateOf(canvas, event),
+                currentGeometry: [...annotationPointsRef.current],
+            }, operations);
+        });
 
         if (currentCanvasRef) {
             const canvasRenderingContext = currentCanvasRef.getContext('2d');
@@ -174,9 +231,7 @@ const useAnnotationEngine = ({
                 currentCanvasRef.removeEventListener('mousemove', handleMouseMove);
             }
         };
-    }, [drawScene, numberOfPoints, onAnnotationEnded, onAnnotationDragged, canvasRef]);
-
-    return { canvasRef };
+    }, [drawScene, canvasRef, onEvent]);
 };
 
 export default useAnnotationEngine;
