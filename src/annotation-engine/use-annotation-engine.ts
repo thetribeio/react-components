@@ -22,6 +22,7 @@ export interface MouseDownEvent {
     type: 'mouse_down_event';
     at: Coordinates;
     currentGeometry: Array<Coordinates>;
+    event: MouseEvent;
 }
 
 export interface MouseDownOnExistingPointEvent {
@@ -29,18 +30,21 @@ export interface MouseDownOnExistingPointEvent {
     at: Coordinates;
     pointIds: Array<PointId>;
     currentGeometry: Array<Coordinates>;
+    event: MouseEvent;
 }
 
 export interface MouseMove {
     type: 'mouse_move_event';
     to: Coordinates;
     currentGeometry: Array<Coordinates>;
+    event: MouseEvent;
 }
 
 export interface MouseUp {
     type: 'mouse_up_event';
     at: Coordinates;
     currentGeometry: Array<Coordinates>;
+    event: MouseEvent;
 }
 
 export interface MouseUpOnExistingPointEvent {
@@ -48,12 +52,14 @@ export interface MouseUpOnExistingPointEvent {
     at: Coordinates;
     pointIds: Array<PointId>;
     currentGeometry: Array<Coordinates>;
+    event: MouseEvent;
 }
 
 export interface MouseWheelEvent {
     type: 'mouse_wheel_event';
     deltaX: number;
     deltaY: number;
+    event: WheelEvent
 }
 
 export interface Operations {
@@ -175,12 +181,14 @@ const useAnnotationEngine = ({
                     at: eventCoords,
                     pointIds: isClickOnExistingPointsIdx,
                     currentGeometry: [...annotationPointsRef.current],
+                    event,
                 }, operations);
             } else {
                 onEvent({
                     type: 'mouse_up_event',
                     at: eventCoords,
                     currentGeometry: [...annotationPointsRef.current],
+                    event,
                 }, operations);
             }
         });
@@ -195,12 +203,14 @@ const useAnnotationEngine = ({
                     at: eventCoords,
                     pointIds: isClickOnExistingPointsIdx,
                     currentGeometry: [...annotationPointsRef.current],
+                    event,
                 }, operations);
             } else {
                 onEvent({
                     type: 'mouse_down_event',
                     at: eventCoords,
                     currentGeometry: [...annotationPointsRef.current],
+                    event,
                 }, operations);
             }
         });
@@ -210,6 +220,7 @@ const useAnnotationEngine = ({
                 type: 'mouse_move_event',
                 to: canvasCoordinateOf(canvas, event),
                 currentGeometry: [...annotationPointsRef.current],
+                event,
             }, operations);
         });
 
@@ -218,6 +229,7 @@ const useAnnotationEngine = ({
                 type: 'mouse_wheel_event',
                 deltaX: event.deltaX,
                 deltaY: event.deltaY,
+                event,
             }, operations);
         });
 
