@@ -1,9 +1,10 @@
+// eslint-disable-next-line max-classes-per-file
 import { Story, Meta } from '@storybook/react';
-import React, { useState, useRef, RefObject } from 'react';
+import React, { useEffect, useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
 import Button from '../button';
 import { Annotation, Coordinates } from './models';
-import { Events, Handles, Operations, PointId } from './use-annotation-engine';
+import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent } from './use-annotation-engine';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
 
 export default {
@@ -48,15 +49,47 @@ const Label = styled.label`
     color: white;
 `;
 
-const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
+type SaveAnnotationFunction = (geometry: Array<Coordinates>, isClosed: boolean) => void;
+
+const useSaveAnnotation = () => {
     const [annotations, setAnnotations] = useState<Annotation[]>([]);
     const [annotationToEdit, setAnnotationToEdit] = useState<Annotation | undefined>(undefined);
-    const refAE = useRef<Handles>(null);
-    const [numberOfPoints, setNumberOfPoints] = useState(2);
+
+    const saveAnnotation = (geometry: Array<Coordinates>, isClosed: boolean) => {
+        setAnnotations(annotations.map((annotation) => {
+            if (annotation.id === annotationToEdit?.id) {
+                return { ...annotationToEdit, coordinates: geometry, isClosed };
+            }
+
+            return annotation;
+        }));
+        setAnnotationToEdit(undefined);
+        if (!annotationToEdit) {
+            const id = `${annotations.length ? Number(annotations[annotations.length - 1].id) + 1 : 1}`;
+            setAnnotations([...annotations, { id, name: `Mesure ${id}`, coordinates: geometry, isClosed }]);
+        }
+    };
+
+    return {
+        annotations,
+        annotationToEdit, setAnnotationToEdit,
+        saveAnnotation,
+    }
+}
+
+/**
+ * Manages all the necessary states for the Annotation Engine
+ */
+const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToEdit: Annotation | undefined, setAnnotationToEdit: React.Dispatch<React.SetStateAction<Annotation | undefined>>, saveAnnotation: SaveAnnotationFunction, refAE: RefObject<Handles>) => {
+    const [numberOfPoints, setNumberOfPoints] = useState(0);
+    const [shapeType, setShapeType] = useState(availableShapeTypes[0]);
+    const [isShapeClosed, setIsShapeClosed] = useState(true);
 
     const isModeEdition = () => annotationToEdit !== undefined;
     const isModeCreation = () => !isModeEdition() && numberOfPoints > 0;
     const isModeInactif = () => !isModeCreation() && !isModeEdition();
+    // key codes map for shape validation (polygon and polylines)
+    const shapeFinishedOnKeyCodes = ['Space'];
 
     const initState = () => ({
         dragPoint: undefined,
@@ -66,21 +99,101 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
         dragPoint: PointId | undefined,
         tempPoint: PointId | undefined,
     }>(initState());
-    const saveAnnotation = (geometry: Array<Coordinates>) => {
-        setAnnotations(annotations.map((annotation) => {
-            if (annotation.id === annotationToEdit?.id) {
-                return { ...annotationToEdit, coordinates: geometry };
-            }
 
-            return annotation;
-        }));
+    const cancelCreationAndEdition = () => {
+        state.current = initState();
+        // Cancel edition
         setAnnotationToEdit(undefined);
-        if (!annotationToEdit) {
-            const id = `${annotations.length ? Number(annotations[annotations.length - 1].id) + 1 : 1}`;
-            setAnnotations([...annotations, { id, name: `Mesure ${id}`, coordinates: geometry }]);
-        }
+        // Cancel creation
+        refAE.current?.cancelCreation();
     };
-    const isGeometryComplete = (length: number) => length >= numberOfPoints + (state.current.tempPoint !== undefined ? 1 : 0);
+
+    /**
+     * Set limit of points and is closed logic for the shape when we change the Annotation Engine shape type
+     */
+    useEffect(() => {
+        switch (shapeType) {
+            case 'POINT':
+            default:
+                setNumberOfPoints(1);
+                break;
+            case 'LINE':
+                setNumberOfPoints(2);
+                break;
+        }
+        switch (shapeType) {
+            case 'POLYLINE':
+                setIsShapeClosed(false);
+                break;
+            default:
+                setIsShapeClosed(true);
+                break;
+        }
+    }, [shapeType]);
+
+    /**
+     * Set current shapeType when we edit another annotation
+     */
+    useEffect(() => {
+        if (annotationToEdit !== undefined) {
+            const { length } = annotationToEdit.coordinates;
+            if (length === 1) {
+                setShapeType('POINT');
+            } else if (length === 2) {
+                setShapeType('LINE');
+            } else if (length > 2) {
+                if (annotationToEdit.isClosed === true) {
+                    setShapeType('POLYGON');
+                } else {
+                    setShapeType('POLYLINE');
+                }
+            }
+        }
+    }, [annotationToEdit]);
+
+    const isGeometryComplete = (length: number) => {
+        switch (shapeType) {
+            case 'POINT':
+            case 'LINE':
+            default:
+                return length >= numberOfPoints + (state.current.tempPoint !== undefined ? 1 : 0);
+            case 'POLYGON':
+            case 'POLYLINE':
+                return false;
+        }
+    }
+
+    /**
+     * Dedicated to line, polygon and polylines shapes, return true if shape can be manually complete
+     */
+    const isGeometryReadyToBeManuallyCompleted = (length: number) => {
+        switch (shapeType) {
+            case 'LINE':
+                return isModeEdition();
+            case 'POLYGON':
+                return length - (state.current.tempPoint !== undefined ? 1 : 0) >= 3;
+            case 'POLYLINE':
+                return length - (state.current.tempPoint !== undefined ? 1 : 0) >= 2;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Dedicated to polygon shapes, return true if:
+     * - shape is ready to be manually finished
+     * - mouse is moving on the first point of the shape
+     */
+    const isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint = (currentGeometry: Array<Coordinates>, pointIds: Array<PointId>) => {
+        const { length } = currentGeometry;
+        switch (shapeType) {
+            case 'POLYGON':
+                return isGeometryReadyToBeManuallyCompleted(length) && pointIds.some((id) => id === 0);
+            default:
+                return false;
+        }
+    }
+
     const createNewPoint = (at: Coordinates, currentGeometry: Coordinates[], operations: Operations) => {
         if (state.current.tempPoint === undefined) {
             // First point
@@ -94,11 +207,16 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
             state.current.tempPoint = undefined;
         }
     };
+
     const shapeFinished = (currentGeometry: Coordinates[], operations: Operations) => {
+        if (state.current.tempPoint) {
+            currentGeometry.splice(state.current.tempPoint, 1);
+        }
         operations.finishCurrentLine();
         state.current = initState();
-        saveAnnotation(currentGeometry);
+        saveAnnotation(currentGeometry, isShapeClosed);
     };
+
     const lastValidatedPoint = (currentGeometry: Coordinates[]): PointId => {
         if (state.current.tempPoint === currentGeometry.length - 1) {
             return currentGeometry.length - 2;
@@ -106,19 +224,56 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
 
         return currentGeometry.length - 1;
     };
+
     const stillOnPreviousPoint = (onPoints: Array<PointId>, currentGeometry: Array<Coordinates>) => onPoints.includes(lastValidatedPoint(currentGeometry));
 
-    const onEvent = (event: Events, operations: Operations) => {
+    const keyDownEvent = (event: KeyDownEvent) => {
+        if (event.event.code === 'Space') {
+            // avoid page scrolldown on space key up
+            event.event.preventDefault();
+        }
+    }
+
+    const keyUpEvent = (event: KeyUpEvent, operations: Operations) => {
+        if (shapeFinishedOnKeyCodes.includes(event.event.code) && isGeometryReadyToBeManuallyCompleted(event.currentGeometry.length)) {
+            shapeFinished(event.currentGeometry, operations);
+        }
+    }
+
+    const mouseDownEvent = (event: MouseDownEvent | MouseDownOnExistingPointEvent, operations: Operations) => {
+        createNewPoint(event.at, event.currentGeometry, operations);
+    }
+
+    const handleEvent = (event: Events, operations: Operations): void => {
         if (isModeInactif()) {
             return;
         }
         if (isModeCreation()) {
             switch (event.type) {
+                case 'mouse_move_on_existing_point_event':
+                    if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
+                        operations.highlightExistingPoint(0);
+                    }
+                    break;
+                case 'key_down_event':
+                    keyDownEvent(event);
+                    break;
+                case 'key_up_event':
+                    keyUpEvent(event, operations);
+                    break;
                 case 'mouse_down_event':
+                    mouseDownEvent(event, operations);
+                    break;
                 case 'mouse_down_on_existing_point_event':
-                    createNewPoint(event.at, event.currentGeometry, operations);
+                    if (event.type === 'mouse_down_on_existing_point_event'
+                        && isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
+                        shapeFinished(event.currentGeometry, operations);
+                        break;
+                    }
+                    mouseDownEvent(event, operations);
                     break;
                 case 'mouse_move_event':
+                    operations.removeHighlightPoint();
                     if (state.current.tempPoint !== undefined) {
                         // move point under cursor
                         operations.movePoint(state.current.tempPoint, event.to);
@@ -133,7 +288,6 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
                     }
                     break;
                 case 'mouse_up_event':
-                    createNewPoint(event.at, event.currentGeometry, operations);
                     if (isGeometryComplete(event.currentGeometry.length)) {
                         shapeFinished(event.currentGeometry, operations);
                     }
@@ -144,8 +298,11 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
         }
         if (isModeEdition()) {
             switch (event.type) {
-                case 'mouse_down_event':
-                    saveAnnotation(event.currentGeometry);
+                case 'key_down_event':
+                    keyDownEvent(event);
+                    break;
+                case 'key_up_event':
+                    keyUpEvent(event, operations);
                     break;
                 case 'mouse_down_on_existing_point_event':
                     [state.current.dragPoint] = event.pointIds;
@@ -157,20 +314,39 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
                     break;
                 case 'mouse_up_on_existing_point_event':
                 case 'mouse_up_event':
+                    if (shapeType === 'POINT') {
+                        saveAnnotation(event.currentGeometry, isShapeClosed);
+                    }
                     state.current.dragPoint = undefined;
                     break;
                 default:
                     // nothing to do
             }
         }
-    };
-    const cancelCreationAndEdition = () => {
-        state.current = initState();
-        // Cancel edition
-        setAnnotationToEdit(undefined);
-        // Cancel creation
-        refAE.current?.cancelCreation();
-    };
+    }
+
+    return {
+        handleEvent,
+        shapeType, setShapeType,
+        cancelCreationAndEdition,
+    }
+}
+
+const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
+    const availableShapeTypes: Array<string> = ['POINT', 'LINE', 'POLYGON', 'POLYLINE'];
+    const refAE = useRef<Handles>(null);
+
+    const {
+        annotations,
+        annotationToEdit, setAnnotationToEdit,
+        saveAnnotation,
+    } = useSaveAnnotation();
+
+    const {
+        handleEvent,
+        shapeType, setShapeType,
+        cancelCreationAndEdition,
+    } = useEngineStateMachine(availableShapeTypes, annotationToEdit, setAnnotationToEdit, saveAnnotation, refAE);
 
     return (
         <AnnotationsContainer>
@@ -181,11 +357,15 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
                 ref={refAE}
                 annotationToEdit={annotationToEdit}
                 annotations={annotations}
-                onEvent={onEvent}
+                onEvent={handleEvent}
             />
             <ActionContainer>
-                <Label>Nombre de points</Label>
-                <input onChange={(event) => setNumberOfPoints(parseInt(event.target.value, 10))} type="number" value={numberOfPoints}/>
+                <Label>Type de forme</Label>
+                <select onChange={(event) => setShapeType(event.target.value)} value={shapeType}>
+                    {
+                        availableShapeTypes.map((sType) => (<option key={sType} value={sType}>{sType}</option>))
+                    }
+                </select>
                 <Button label="Cancel edition" onClick={cancelCreationAndEdition} type="button" />
             </ActionContainer>
             <div style={{ color: 'white' }}>

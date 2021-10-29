@@ -15,7 +15,16 @@ export interface Handles {
 }
 
 export type PointId = number;
-export type Events = MouseDownEvent | MouseDownOnExistingPointEvent | MouseMove | MouseUp | MouseUpOnExistingPointEvent | MouseWheelEvent;
+export type Events =
+    | MouseDownEvent
+    | MouseDownOnExistingPointEvent
+    | MouseMoveOnExistingPointEvent
+    | MouseMove
+    | MouseUp
+    | KeyUpEvent
+    | KeyDownEvent
+    | MouseUpOnExistingPointEvent
+    | MouseWheelEvent;
 export type OnEvent = (event: Events, operations: Operations) => void;
 
 export interface MouseDownEvent {
@@ -55,15 +64,37 @@ export interface MouseUpOnExistingPointEvent {
     event: MouseEvent;
 }
 
+export interface MouseMoveOnExistingPointEvent {
+    type: 'mouse_move_on_existing_point_event';
+    at: Coordinates;
+    pointIds: Array<PointId>;
+    currentGeometry: Array<Coordinates>;
+    event: MouseEvent;
+}
+
 export interface MouseWheelEvent {
     type: 'mouse_wheel_event';
     deltaX: number;
     deltaY: number;
-    event: WheelEvent
+    event: WheelEvent;
+}
+
+export interface KeyUpEvent {
+    type: 'key_up_event';
+    currentGeometry: Array<Coordinates>;
+    event: KeyboardEvent;
+}
+
+export interface KeyDownEvent {
+    type: 'key_down_event';
+    currentGeometry: Array<Coordinates>;
+    event: KeyboardEvent;
 }
 
 export interface Operations {
     addPoint(at: Coordinates): PointId;
+    highlightExistingPoint(pointId: PointId): void;
+    removeHighlightPoint(): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
     drawOnCanvas(draw: (context2d: CanvasRenderingContext2D) => void): void;
@@ -78,6 +109,8 @@ const useAnnotationEngine = ({
 }: UseAnnotationEngineArgs): void => {
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationPointsRef = useRef<Coordinates[]>([]);
+    const annotationHighlightPointIndexRef = useRef<number | undefined>(undefined);
+    const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
 
     const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
         const rect = canvas.getBoundingClientRect();
@@ -87,11 +120,24 @@ const useAnnotationEngine = ({
             y: event.clientY - rect.top,
         };
     };
-    
-    const detectClickOnExistingPoints = (coordinates: Array<Coordinates>, clickAt: Coordinates): Array<PointId> => coordinates
-            .map((coordinate, idx) => ({coordinate, idx}))
-            .filter(({coordinate}) => areCoordinatesInsideCircle(coordinate, clickAt, 7))
-            .map(({idx}) => idx)
+
+    const detectClickOnExistingPoints = (coordinates: Array<Coordinates>, clickAt: Coordinates): Array<PointId> =>
+        coordinates
+            .map((coordinate, idx) => ({ coordinate, idx }))
+            .filter(({ coordinate }) => areCoordinatesInsideCircle(coordinate, clickAt, 7))
+            .map(({ idx }) => idx);
+
+    const detectMoveOnExistingPoints = (coordinates: Array<Coordinates>, moveOn: Coordinates): Array<PointId> => {
+        const coords = [...coordinates];
+        coords.pop();
+
+        return coords
+            .map((coordinate, idx) => ({ coordinate, idx }))
+            .filter(({ coordinate }) =>
+                areCoordinatesInsideCircle(coordinate, moveOn, MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION),
+            )
+            .map(({ idx }) => idx);
+    };
 
     useEffect(() => {
         if (annotationToEdit) {
@@ -129,7 +175,13 @@ const useAnnotationEngine = ({
 
         drawAnnotations(renderingContextRef.current, annotationsToDraw);
 
-        drawCurrentAnnotation(renderingContextRef.current, annotationPointsRef.current, annotationPointsRef.current === annotationToEdit?.coordinates);
+        drawCurrentAnnotation(
+            renderingContextRef.current,
+            annotationPointsRef.current,
+            annotationPointsRef.current === annotationToEdit?.coordinates,
+            annotationHighlightPointIndexRef.current,
+            annotationToEdit,
+        );
     }, [annotationsToDraw, canvasRef, annotationToEdit]);
 
     useImperativeHandle(ref, () => ({
@@ -138,7 +190,7 @@ const useAnnotationEngine = ({
                 annotationPointsRef.current = [];
                 drawScene();
             }
-        }
+        },
     }));
 
     // Initialize canvas
@@ -148,6 +200,12 @@ const useAnnotationEngine = ({
         let delayDraw: Array<(context2d: CanvasRenderingContext2D) => void> = [];
         const operations: Operations = {
             addPoint: (at: Coordinates) => annotationPointsRef.current.push(at) - 1,
+            highlightExistingPoint: (pointId: PointId) => {
+                annotationHighlightPointIndexRef.current = pointId;
+            },
+            removeHighlightPoint: () => {
+                annotationHighlightPointIndexRef.current = undefined;
+            },
             movePoint: (pointId: PointId, to: Coordinates) => {
                 annotationPointsRef.current[pointId] = to;
             },
@@ -156,7 +214,7 @@ const useAnnotationEngine = ({
             },
             drawOnCanvas: (draw: (context2d: CanvasRenderingContext2D) => void) => {
                 delayDraw.push(draw);
-            }
+            },
         };
 
         const handleEvent = (handler: (canvas: HTMLCanvasElement) => void) => {
@@ -165,73 +223,141 @@ const useAnnotationEngine = ({
                 drawScene();
                 const context2d = currentCanvasRef.getContext('2d');
                 if (context2d) {
-                    delayDraw.forEach(draw => draw(context2d));
+                    delayDraw.forEach((draw) => draw(context2d));
                 }
                 delayDraw = [];
             }
         };
-        
-        const handleMouseUp = (event: MouseEvent) => handleEvent((canvas) => {
-            const eventCoords = canvasCoordinateOf(canvas, event);
-            const isClickOnExistingPointsIdx = detectClickOnExistingPoints(annotationPointsRef.current, eventCoords);
-            
-            if (isClickOnExistingPointsIdx.length > 0) {
-                onEvent({
-                    type: 'mouse_up_on_existing_point_event',
-                    at: eventCoords,
-                    pointIds: isClickOnExistingPointsIdx,
-                    currentGeometry: [...annotationPointsRef.current],
-                    event,
-                }, operations);
-            } else {
-                onEvent({
-                    type: 'mouse_up_event',
-                    at: eventCoords,
-                    currentGeometry: [...annotationPointsRef.current],
-                    event,
-                }, operations);
-            }
-        });
 
-        const handleMouseDown = (event: MouseEvent) => handleEvent((canvas) => {
-            const eventCoords = canvasCoordinateOf(canvas, event);
-            const isClickOnExistingPointsIdx = detectClickOnExistingPoints(annotationPointsRef.current, eventCoords);
-            
-            if (isClickOnExistingPointsIdx.length > 0) {
-                onEvent({
-                    type: 'mouse_down_on_existing_point_event',
-                    at: eventCoords,
-                    pointIds: isClickOnExistingPointsIdx,
-                    currentGeometry: [...annotationPointsRef.current],
-                    event,
-                }, operations);
-            } else {
-                onEvent({
-                    type: 'mouse_down_event',
-                    at: eventCoords,
-                    currentGeometry: [...annotationPointsRef.current],
-                    event,
-                }, operations);
-            }
-        });
+        const handleMouseUp = (event: MouseEvent) =>
+            handleEvent((canvas) => {
+                const eventCoords = canvasCoordinateOf(canvas, event);
+                const isClickOnExistingPointsIdx = detectClickOnExistingPoints(
+                    annotationPointsRef.current,
+                    eventCoords,
+                );
 
-        const handleMouseMove = (event: MouseEvent) => handleEvent((canvas) => {
-            onEvent({
-                type: 'mouse_move_event',
-                to: canvasCoordinateOf(canvas, event),
-                currentGeometry: [...annotationPointsRef.current],
-                event,
-            }, operations);
-        });
+                if (isClickOnExistingPointsIdx.length > 0) {
+                    onEvent(
+                        {
+                            type: 'mouse_up_on_existing_point_event',
+                            at: eventCoords,
+                            pointIds: isClickOnExistingPointsIdx,
+                            currentGeometry: [...annotationPointsRef.current],
+                            event,
+                        },
+                        operations,
+                    );
+                } else {
+                    onEvent(
+                        {
+                            type: 'mouse_up_event',
+                            at: eventCoords,
+                            currentGeometry: [...annotationPointsRef.current],
+                            event,
+                        },
+                        operations,
+                    );
+                }
+            });
 
-        const handleMouseWheel = (event: WheelEvent) => handleEvent(() => {
-            onEvent({
-                type: 'mouse_wheel_event',
-                deltaX: event.deltaX,
-                deltaY: event.deltaY,
-                event,
-            }, operations);
-        });
+        const handleMouseDown = (event: MouseEvent) =>
+            handleEvent((canvas) => {
+                const eventCoords = canvasCoordinateOf(canvas, event);
+                const isClickOnExistingPointsIdx = detectClickOnExistingPoints(
+                    annotationPointsRef.current,
+                    eventCoords,
+                );
+
+                if (isClickOnExistingPointsIdx.length > 0) {
+                    onEvent(
+                        {
+                            type: 'mouse_down_on_existing_point_event',
+                            at: eventCoords,
+                            pointIds: isClickOnExistingPointsIdx,
+                            currentGeometry: [...annotationPointsRef.current],
+                            event,
+                        },
+                        operations,
+                    );
+                } else {
+                    onEvent(
+                        {
+                            type: 'mouse_down_event',
+                            at: eventCoords,
+                            currentGeometry: [...annotationPointsRef.current],
+                            event,
+                        },
+                        operations,
+                    );
+                }
+            });
+
+        const handleMouseMove = (event: MouseEvent) =>
+            handleEvent((canvas) => {
+                const eventCoords = canvasCoordinateOf(canvas, event);
+                const isMoveOnExistingPointsIdx = detectMoveOnExistingPoints(annotationPointsRef.current, eventCoords);
+
+                if (isMoveOnExistingPointsIdx.length > 0) {
+                    onEvent(
+                        {
+                            type: 'mouse_move_on_existing_point_event',
+                            at: eventCoords,
+                            pointIds: isMoveOnExistingPointsIdx,
+                            currentGeometry: [...annotationPointsRef.current],
+                            event,
+                        },
+                        operations,
+                    );
+                } else {
+                    onEvent(
+                        {
+                            type: 'mouse_move_event',
+                            to: canvasCoordinateOf(canvas, event),
+                            currentGeometry: [...annotationPointsRef.current],
+                            event,
+                        },
+                        operations,
+                    );
+                }
+            });
+
+        const handleMouseWheel = (event: WheelEvent) =>
+            handleEvent(() => {
+                onEvent(
+                    {
+                        type: 'mouse_wheel_event',
+                        deltaX: event.deltaX,
+                        deltaY: event.deltaY,
+                        event,
+                    },
+                    operations,
+                );
+            });
+
+        const handleKeyUp = (event: KeyboardEvent) =>
+            handleEvent(() => {
+                onEvent(
+                    {
+                        type: 'key_up_event',
+                        currentGeometry: [...annotationPointsRef.current],
+                        event,
+                    },
+                    operations,
+                );
+            });
+
+        const handleKeyDown = (event: KeyboardEvent) =>
+            handleEvent(() => {
+                onEvent(
+                    {
+                        type: 'key_down_event',
+                        currentGeometry: [...annotationPointsRef.current],
+                        event,
+                    },
+                    operations,
+                );
+            });
 
         if (currentCanvasRef) {
             const canvasRenderingContext = currentCanvasRef.getContext('2d');
@@ -241,6 +367,8 @@ const useAnnotationEngine = ({
                 currentCanvasRef.addEventListener('mouseup', handleMouseUp);
                 currentCanvasRef.addEventListener('mousemove', handleMouseMove);
                 currentCanvasRef.addEventListener('wheel', handleMouseWheel);
+                document.addEventListener('keyup', handleKeyUp);
+                document.addEventListener('keydown', handleKeyDown);
 
                 currentCanvasRef.width = currentCanvasRef.offsetWidth;
                 currentCanvasRef.height = currentCanvasRef.offsetHeight;
@@ -257,6 +385,8 @@ const useAnnotationEngine = ({
                 currentCanvasRef.removeEventListener('mousedown', handleMouseDown);
                 currentCanvasRef.removeEventListener('mousemove', handleMouseMove);
                 currentCanvasRef.removeEventListener('wheel', handleMouseWheel);
+                document.removeEventListener('keyup', handleKeyUp);
+                document.removeEventListener('keydown', handleKeyDown);
             }
         };
     }, [drawScene, canvasRef, onEvent]);

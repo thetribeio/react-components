@@ -61,66 +61,86 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
     renderingContext.restore();
 };
 
-export const drawSelectedPoint = (renderingContext: CanvasRenderingContext2D, coordinates: Coordinates): void => {
+export const drawPoint = (
+    type: 'SELECTED' | 'UNSELECTED' | 'HIGHLIGHTED',
+    renderingContext: CanvasRenderingContext2D,
+    coordinates: Coordinates,
+): void => {
     renderingContext.beginPath();
-    renderingContext.strokeStyle = '#0053CC';
-    renderingContext.lineWidth = 2;
-    renderingContext.arc(coordinates.x, coordinates.y, 7, 0, Math.PI * 2, true);
+
+    // stroke and line
+    if (type === 'SELECTED') {
+        renderingContext.strokeStyle = '#FFF';
+        renderingContext.lineWidth = 1;
+    } else if (type === 'HIGHLIGHTED' || type === 'UNSELECTED') {
+        renderingContext.strokeStyle = '#FFFFFF95';
+        renderingContext.lineWidth = 2;
+    }
+
+    // arc
+    if (type === 'UNSELECTED') {
+        renderingContext.arc(coordinates.x, coordinates.y, 7, 0, Math.PI * 2, true);
+    } else if (type === 'SELECTED') {
+        renderingContext.arc(coordinates.x, coordinates.y, 8, 0, Math.PI * 2, true);
+    } else if (type === 'HIGHLIGHTED') {
+        renderingContext.arc(coordinates.x, coordinates.y, 14, 0, Math.PI * 2, true);
+    }
+
     renderingContext.stroke();
-    renderingContext.strokeStyle = '#000';
+
+    if (type === 'SELECTED' || type === 'UNSELECTED') {
+        renderingContext.strokeStyle = '#000';
+    }
+
     renderingContext.closePath();
 
     renderingContext.beginPath();
-    renderingContext.fillStyle = '#FFFFFF30';
-    renderingContext.arc(coordinates.x, coordinates.y, 5, 0, Math.PI * 2, true);
+
+    // fill
+    if (type === 'SELECTED' || type === 'HIGHLIGHTED') {
+        renderingContext.fillStyle = '#0053CC66';
+    } else if (type === 'UNSELECTED') {
+        renderingContext.fillStyle = '#0053CC30';
+    }
+
+    // arc
+    if (type === 'SELECTED') {
+        renderingContext.arc(coordinates.x, coordinates.y, 8, 0, Math.PI * 2, true);
+    } else if (type === 'UNSELECTED') {
+        renderingContext.arc(coordinates.x, coordinates.y, 5, 0, Math.PI * 2, true);
+    } else if (type === 'HIGHLIGHTED') {
+        renderingContext.arc(coordinates.x, coordinates.y, 12, 0, Math.PI * 2, true);
+    }
+
     renderingContext.fill();
-    renderingContext.fillStyle = '#000';
+
+    if (type === 'SELECTED' || type === 'UNSELECTED') {
+        renderingContext.strokeStyle = '#000';
+    }
+
     renderingContext.closePath();
 };
 
-export const drawUnselectedPoint = (renderingContext: CanvasRenderingContext2D, coordinates: Coordinates): void => {
-    renderingContext.beginPath();
-    renderingContext.strokeStyle = '#FFFFFF95';
-    renderingContext.lineWidth = 2;
-    renderingContext.arc(coordinates.x, coordinates.y, 7, 0, Math.PI * 2, true);
-    renderingContext.stroke();
-    renderingContext.strokeStyle = '#000';
-    renderingContext.closePath();
-
-    renderingContext.beginPath();
-    renderingContext.fillStyle = '#0053CC30';
-    renderingContext.arc(coordinates.x, coordinates.y, 5, 0, Math.PI * 2, true);
-    renderingContext.fill();
-    renderingContext.fillStyle = '#000';
-    renderingContext.closePath();
-};
-
-export const drawSelectedLine = (
+export const drawLine = (
+    type: 'SELECTED' | 'UNSELECTED',
     renderingContext: CanvasRenderingContext2D,
     startCoordinates: Coordinates,
     endCoordinates: Coordinates,
 ): void => {
     renderingContext.beginPath();
-    renderingContext.strokeStyle = '#0053CC';
-    renderingContext.moveTo(startCoordinates.x, startCoordinates.y);
-    renderingContext.lineWidth = 2;
-    renderingContext.lineTo(endCoordinates.x, endCoordinates.y);
-    renderingContext.stroke();
-    renderingContext.closePath();
-};
 
-export const drawUnselectedLine = (
-    renderingContext: CanvasRenderingContext2D,
-    startCoordinates: Coordinates,
-    endCoordinates: Coordinates,
-): void => {
-    renderingContext.beginPath();
-    renderingContext.strokeStyle = '#FFFFFF';
-    renderingContext.lineCap = 'round';
+    if (type === 'SELECTED') {
+        renderingContext.strokeStyle = '#0053CC';
+    } else if (type === 'UNSELECTED') {
+        renderingContext.strokeStyle = '#FFFFFF';
+        renderingContext.lineCap = 'round';
+    }
+
     renderingContext.moveTo(startCoordinates.x, startCoordinates.y);
     renderingContext.lineTo(endCoordinates.x, endCoordinates.y);
     renderingContext.lineWidth = 2;
     renderingContext.stroke();
+
     renderingContext.closePath();
 };
 
@@ -129,9 +149,15 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
 
-        annotation.coordinates.forEach((coordinates: Coordinates) => {
+        annotation.coordinates.forEach((coordinates: Coordinates, index: number) => {
             if (previousCoordinates) {
-                drawUnselectedLine(renderingContext, previousCoordinates, coordinates);
+                if (annotation.isClosed === false) {
+                    if (index > 0) {
+                        drawLine('UNSELECTED', renderingContext, previousCoordinates, coordinates);
+                    }
+                } else {
+                    drawLine('UNSELECTED', renderingContext, previousCoordinates, coordinates);
+                }
             }
 
             previousCoordinates = coordinates;
@@ -148,7 +174,7 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
                 x: middlePoint.x + textSize.width / 2,
                 y: middlePoint.y - 10,
             };
-            drawUnselectedPoint(renderingContext, middlePoint);
+            drawPoint('UNSELECTED', renderingContext, middlePoint);
             drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
         }
         if (annotation.coordinates.length >= 2) {
@@ -163,18 +189,26 @@ export const drawCurrentAnnotation = (
     renderingContext: CanvasRenderingContext2D,
     annotationPoints: Coordinates[],
     isComplete: boolean,
+    annotationHighlightPointIndex?: number,
+    currentAnnotation?: Annotation,
 ): void => {
-    annotationPoints.forEach((annotationPoint: Coordinates) => {
-        drawSelectedPoint(renderingContext, annotationPoint);
+    annotationPoints.forEach((annotationPoint: Coordinates, index: number) => {
+        if (index === annotationHighlightPointIndex) {
+            drawPoint('HIGHLIGHTED', renderingContext, annotationPoint);
+        } else {
+            drawPoint('SELECTED', renderingContext, annotationPoint);
+        }
     });
 
     if (annotationPoints.length > 1) {
         for (let i = 1; i < annotationPoints.length; i++) {
-            drawSelectedLine(renderingContext, annotationPoints[i - 1], annotationPoints[i]);
+            drawLine('SELECTED', renderingContext, annotationPoints[i - 1], annotationPoints[i]);
         }
     }
 
     if (isComplete) {
-        drawSelectedLine(renderingContext, annotationPoints[annotationPoints.length - 1], annotationPoints[0]);
+        if (currentAnnotation?.isClosed === true) {
+            drawLine('SELECTED', renderingContext, annotationPoints[annotationPoints.length - 1], annotationPoints[0]);
+        }
     }
 };
