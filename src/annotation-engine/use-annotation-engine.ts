@@ -19,6 +19,7 @@ export type Events =
     | MouseDownEvent
     | MouseDownOnExistingPointEvent
     | MouseMoveOnExistingPointEvent
+    | MouseMoveOnLabelAreaEvent // @laurent
     | MouseMove
     | MouseUp
     | ReleaseKeyEvent
@@ -72,6 +73,15 @@ export interface MouseMoveOnExistingPointEvent {
     event: MouseEvent;
 }
 
+// @laurent
+export interface MouseMoveOnLabelAreaEvent {
+    type: 'mouse_move_on_label_area_event';
+    at: Coordinates;
+    pointIds: Array<PointId>;
+    currentGeometry: Array<Coordinates>;
+    event: MouseEvent;
+}
+
 export interface MouseWheelEvent {
     type: 'mouse_wheel_event';
     deltaX: number;
@@ -112,6 +122,12 @@ const useAnnotationEngine = ({
     const annotationHighlightPointIndexRef = useRef<number>(-1);
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
 
+    /** @laurent
+     * Returns the coordinates of a mouse event in the canvas referential
+     * @param canvas 
+     * @param event 
+     * @returns 
+     */
     const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
         const rect = canvas.getBoundingClientRect();
 
@@ -121,12 +137,24 @@ const useAnnotationEngine = ({
         };
     };
 
+    /** @laurent
+     * Returns an array of points ids from a given list: these points are in a small circle around the click
+     * @param coordinates 
+     * @param clickAt 
+     * @returns 
+     */
     const detectClickOnExistingPoints = (coordinates: Array<Coordinates>, clickAt: Coordinates): Array<PointId> =>
         coordinates
             .map((coordinate, idx) => ({ coordinate, idx }))
             .filter(({ coordinate }) => areCoordinatesInsideCircle(coordinate, clickAt, 7))
             .map(({ idx }) => idx);
 
+    /** @laurent
+     * Returns an array of points ids from a given list: these points are in a small circle around the mouse position
+     * @param coordinates 
+     * @param moveOn 
+     * @returns 
+     */
     const detectMoveOnExistingPoints = (coordinates: Array<Coordinates>, moveOn: Coordinates): Array<PointId> => {
         const coords = [...coordinates];
         coords.pop();
@@ -139,6 +167,9 @@ const useAnnotationEngine = ({
             .map(({ idx }) => idx);
     };
 
+    /** @laurent
+     * fills annotationPointsRef.current with the coordinates of the annotation to edit (clear it if none)
+     */
     useEffect(() => {
         if (annotationToEdit) {
             annotationPointsRef.current = annotationToEdit.coordinates;
@@ -147,6 +178,9 @@ const useAnnotationEngine = ({
         }
     }, [annotationToEdit]);
 
+    /** @laurent
+     * Removes the annotation to edit from an array of annotations (?)
+     */
     const annotationsToDraw = useMemo<Annotation[]>(() => {
         if (annotationToEdit) {
             const annotationToEditIndex = annotations.findIndex(
@@ -164,6 +198,11 @@ const useAnnotationEngine = ({
         return [...annotations];
     }, [annotations, annotationToEdit]);
 
+    /** @laurent
+     * clears the canvas and then paints:
+     * - the previously drawn annotations
+     * - the annotation to edit
+     */
     const drawScene = useCallback(() => {
         const currentCanvasRef = canvasRef.current;
 
@@ -185,6 +224,10 @@ const useAnnotationEngine = ({
         );
     }, [annotationsToDraw, canvasRef, annotationToEdit]);
 
+    /** @laurent
+     * creates a new event handler and links it to some instance of Annotation Engine ??
+     * => cancelCreation: clears annotationToEdit and repaints everything
+     */
     useImperativeHandle(ref, () => ({
         cancelCreation() {
             if (annotationToEdit === undefined) {
@@ -201,6 +244,7 @@ const useAnnotationEngine = ({
         let delayDraw: Array<(context2d: CanvasRenderingContext2D) => void> = [];
         const operations: Operations = {
             addPoint: (at: Coordinates) => annotationPointsRef.current.push(at) - 1,
+            // @laurent "existing point" = from the annotation to edit!
             highlightExistingPoint: (at: Coordinates) => {
                 const index = annotationPointsRef.current.findIndex((point) =>
                     areCoordinatesInsideCircle(point, at, MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION),
@@ -220,11 +264,17 @@ const useAnnotationEngine = ({
             finishCurrentLine: () => {
                 annotationPointsRef.current = [];
             },
+            // @laurent add something to draw later
             drawOnCanvas: (draw: (context2d: CanvasRenderingContext2D) => void) => {
                 delayDraw.push(draw);
             },
         };
 
+        /** @laurent when an event occurs, repaints all the canvas
+         * and executes a list of drawings stored in "delayDraw"
+         * 
+         * @param handler 
+         */
         const handleEvent = (handler: (canvas: HTMLCanvasElement) => void) => {
             if (currentCanvasRef) {
                 handler(currentCanvasRef);
@@ -233,10 +283,19 @@ const useAnnotationEngine = ({
                 if (context2d) {
                     delayDraw.forEach((draw) => draw(context2d));
                 }
+                // @laurent contains a succession of function declarations that will be executed 
+                // each one after the other?
                 delayDraw = [];
             }
         };
 
+        // @laurent
+        /**
+         * lists all event behaviors
+         * with onEvent, fires objects events along with operations object
+         * @param event 
+         * @returns 
+         */
         const handleMouseUp = (event: MouseEvent) =>
             handleEvent((canvas) => {
                 const eventCoords = canvasCoordinateOf(canvas, event);
@@ -276,6 +335,7 @@ const useAnnotationEngine = ({
                     annotationPointsRef.current,
                     eventCoords,
                     );
+                // @laurent
                 const clickedAnnotation = annotations.find((annotation) => {
                     const isClickOnPreviouslyDrawnPointsIdx = detectClickOnExistingPoints(
                         annotation.coordinates,
@@ -317,6 +377,43 @@ const useAnnotationEngine = ({
                 const eventCoords = canvasCoordinateOf(canvas, event);
                 const isMoveOnExistingPointsIdx = detectMoveOnExistingPoints(annotationPointsRef.current, eventCoords);
 
+                // startLaurent
+                const hoverableAreas = annotations.filter((annotation) => annotation.coordinates.length >= 2);
+                // @laurent found on SOF +D
+                const isInsidePolygon = (point: Coordinates, polygonPoints: Coordinates[]) => {
+
+                    const {x} = point; 
+                    const {y} = point;                     
+                    let isInside = false;
+                    for (let i = 0, j = polygonPoints.length - 1; i < polygonPoints.length; j = i++) {
+                        const xi = polygonPoints[i].x;
+                        const yi = polygonPoints[i].y;
+                        const xj = polygonPoints[j].x;
+                        const yj = polygonPoints[j].y;
+                        
+                        const intersect = ((yi > y) !== (yj > y))
+                            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                        if (intersect) isInside = !isInside;
+                    }
+                    
+                    return isInside;
+                }
+
+                const isInsideExistingPolygon = hoverableAreas.some((hoverableArea) => isInsidePolygon(eventCoords, hoverableArea.coordinates))
+                if (isInsideExistingPolygon) {
+                    onEvent(
+                        {
+                            type: 'mouse_move_on_label_area_event',
+                            at: eventCoords,
+                            pointIds: isMoveOnExistingPointsIdx,
+                            currentGeometry: [...annotationPointsRef.current],
+                            event,
+                        },
+                        operations,
+                    );
+                }
+
+                // endLaurent
                 if (isMoveOnExistingPointsIdx.length > 0) {
                     onEvent(
                         {
