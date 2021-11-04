@@ -1,4 +1,4 @@
-export type ShapeType = 'POINT' | 'LINE' | 'POLYGON' | 'POLYLINE';
+export type ShapeType = 'INACTIVE' |'POINT' | 'LINE' | 'POLYGON' | 'POLYLINE';
 
 export type Coordinates = {
     x: number;

@@ -122,6 +122,9 @@ const useEngineStateMachine = (availableShapeTypes: Array<ShapeType>, annotation
             case 'LINE':
                 setNumberOfPoints(2);
                 break;
+            case 'INACTIVE':
+                setNumberOfPoints(0);
+                break;
         }
     }, [shapeType]);
 
@@ -229,6 +232,17 @@ const useEngineStateMachine = (availableShapeTypes: Array<ShapeType>, annotation
 
     const handleEvent = (event: Events, operations: Operations): void => {
         if (isModeInactif()) {
+            switch (event.type) {
+                case 'mouse_down_event':
+                    break;
+                    case 'mouse_down_on_existing_point_event':
+                    console.info(event.pointIds)
+                    console.info('clic existing point')
+                    break;
+                default:
+                    break;
+            }
+
             return;
         }
         if (isModeCreation()) {
@@ -319,7 +333,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<ShapeType>, annotation
 }
 
 const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
-    const availableShapeTypes: Array<ShapeType> = ['POINT', 'LINE', 'POLYGON', 'POLYLINE'];
+    const availableShapeTypes: Array<ShapeType> = ['INACTIVE', 'POINT', 'LINE', 'POLYGON', 'POLYLINE'];
     const refAE = useRef<Handles>(null);
 
     const {

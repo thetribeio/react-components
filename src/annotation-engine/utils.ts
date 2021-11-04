@@ -128,7 +128,7 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
     renderingContext.textAlign = 'left';
     renderingContext.translate(from.x, from.y);
     renderingContext.rotate(Math.atan2(distanceY, distanceX));
-    renderingContext.fillStyle = '#FFFFFF';
+    renderingContext.fillStyle = '#F0F';
     drawRoundRect(renderingContext, { x: -2, y: -20 }, textSize.width + 10, 20, 10);
     renderingContext.fillStyle = '#0053CC';
     renderingContext.fillText(label, 2, -5);

@@ -275,7 +275,18 @@ const useAnnotationEngine = ({
                 const isClickOnExistingPointsIdx = detectClickOnExistingPoints(
                     annotationPointsRef.current,
                     eventCoords,
-                );
+                    );
+                const clickedAnnotation = annotations.find((annotation) => {
+                    const isClickOnPreviouslyDrawnPointsIdx = detectClickOnExistingPoints(
+                        annotation.coordinates,
+                        eventCoords,
+                        )
+
+                    return isClickOnPreviouslyDrawnPointsIdx.length > 0
+                })
+                    console.info('annotations : ', annotations);
+                    console.info('annotPointsRef : ', annotationPointsRef.current);
+                    console.info('clickedAnnotation : ', clickedAnnotation);
 
                 if (isClickOnExistingPointsIdx.length > 0) {
                     onEvent(
@@ -399,7 +410,7 @@ const useAnnotationEngine = ({
                 document.removeEventListener('keydown', handlePushKey);
             }
         };
-    }, [drawScene, canvasRef, onEvent]);
+    }, [drawScene, canvasRef, onEvent, annotations]);
 };
 
 export default useAnnotationEngine;
