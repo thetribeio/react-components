@@ -95,44 +95,52 @@ export const drawRoundRect = (
     width: number,
     height: number,
     radius: number,
-): void => {
-    renderingContext.beginPath();
-    renderingContext.moveTo(coordinates.x + radius, coordinates.y);
-    renderingContext.lineTo(coordinates.x + width - radius, coordinates.y);
-    renderingContext.quadraticCurveTo(
+): Path2D => {
+    // renderingContext.beginPath();
+    const path = new Path2D();
+    path.moveTo(coordinates.x + radius, coordinates.y);
+    path.lineTo(coordinates.x + width - radius, coordinates.y);
+    path.quadraticCurveTo(
         coordinates.x + width,
         coordinates.y,
         coordinates.x + width,
         coordinates.y + radius,
     );
-    renderingContext.lineTo(coordinates.x + width, coordinates.y + height);
-    renderingContext.quadraticCurveTo(
+    path.lineTo(coordinates.x + width, coordinates.y + height);
+    path.quadraticCurveTo(
         coordinates.x + width,
         coordinates.y + height,
         coordinates.x + width,
         coordinates.y + height,
     );
-    renderingContext.lineTo(coordinates.x, coordinates.y + height);
-    renderingContext.quadraticCurveTo(coordinates.x, coordinates.y + height, coordinates.x, coordinates.y + height);
-    renderingContext.lineTo(coordinates.x, coordinates.y + radius);
-    renderingContext.quadraticCurveTo(coordinates.x, coordinates.y, coordinates.x + radius, coordinates.y);
-    renderingContext.fill();
-    renderingContext.closePath();
+    path.lineTo(coordinates.x, coordinates.y + height);
+    path.quadraticCurveTo(coordinates.x, coordinates.y + height, coordinates.x, coordinates.y + height);
+    path.lineTo(coordinates.x, coordinates.y + radius);
+    path.quadraticCurveTo(coordinates.x, coordinates.y, coordinates.x + radius, coordinates.y);
+    renderingContext.fill(path);
+
+    return path;
+    // renderingContext.closePath();
 };
 
-const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, to: Coordinates) => {
+const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, to: Coordinates): Path2D => {
     const distanceX = to.x - from.x;
     const distanceY = to.y - from.y;
     const textSize = renderingContext.measureText(label);
     renderingContext.save();
     renderingContext.textAlign = 'left';
-    renderingContext.translate(from.x, from.y);
-    renderingContext.rotate(Math.atan2(distanceY, distanceX));
+    // on se place sur le point de départ du label
+    // renderingContext.translate(from.x, from.y);
+    // renderingContext.rotate(Math.atan2(distanceY, distanceX));
     renderingContext.fillStyle = '#F0F';
-    drawRoundRect(renderingContext, { x: -2, y: -20 }, textSize.width + 10, 20, 10);
+    const labelPath = drawRoundRect(renderingContext, { x: from.x - 2, y: from.y -20 }, textSize.width + 10, 20, 10);
+    // const labelPath = drawRoundRect(renderingContext, { x: - 2, y: -20 }, textSize.width + 10, 20, 10);
     renderingContext.fillStyle = '#0053CC';
-    renderingContext.fillText(label, 2, -5);
+    // renderingContext.fillText(label, 2, 5);
+    renderingContext.fillText(label, from.x + 2, from.y -5 );
     renderingContext.restore();
+
+    return labelPath;
 };
 
 export const drawPoint = (
@@ -219,6 +227,26 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
 
+        if (annotation.coordinates.length === 1) {
+            const middlePoint = annotation.coordinates[0];
+            const textSize = renderingContext.measureText(annotation.name);
+            const firstPoint = {
+                x: middlePoint.x - textSize.width / 2,
+                y: middlePoint.y - 10,
+            };
+            const secondPoint = {
+                x: middlePoint.x + textSize.width / 2,
+                y: middlePoint.y - 10,
+            };
+            drawPoint('UNSELECTED', renderingContext, middlePoint);
+            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
+            annotation.label = {
+                name: annotation.name,
+                path,
+            };
+
+            return;
+        }
         annotation.coordinates.forEach((coordinates: Coordinates, index: number) => {
             if (previousCoordinates) {
                 if (annotation.type === 'POLYLINE') {
@@ -233,25 +261,15 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
             previousCoordinates = coordinates;
         });
 
-        if (annotation.coordinates.length === 1) {
-            const middlePoint = annotation.coordinates[0];
-            const textSize = renderingContext.measureText(annotation.name);
-            const firstPoint = {
-                x: middlePoint.x - textSize.width / 2,
-                y: middlePoint.y - 10,
-            };
-            const secondPoint = {
-                x: middlePoint.x + textSize.width / 2,
-                y: middlePoint.y - 10,
-            };
-            drawPoint('UNSELECTED', renderingContext, middlePoint);
-            drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
-        }
-        if (annotation.coordinates.length >= 2) {
-            const firstPoint = annotation.coordinates[0];
-            const secondPoint = annotation.coordinates[1];
-            drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
-        }
+        const firstPoint = annotation.coordinates[0];
+        const secondPoint = annotation.coordinates[1];
+        const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
+        annotation.label = {
+            name: annotation.name,
+            path,
+        };
+        // if (annotation.coordinates.length >= 2) {
+        // }
     });
 };
 

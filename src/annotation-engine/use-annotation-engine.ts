@@ -344,9 +344,19 @@ const useAnnotationEngine = ({
 
                     return isClickOnPreviouslyDrawnPointsIdx.length > 0
                 })
-                    console.info('annotations : ', annotations);
-                    console.info('annotPointsRef : ', annotationPointsRef.current);
-                    console.info('clickedAnnotation : ', clickedAnnotation);
+
+                const labels = annotations.map((annotation) => annotation?.label);
+                const labelPaths = annotations.map((annotation) => annotation?.label.path);
+                const renderingContext = renderingContextRef.current;
+                labels.forEach((label) => {
+                    if(renderingContext?.isPointInPath(label.path, eventCoords.x, eventCoords.y)) {
+                        console.info(`in label ${label.name} at x : ${eventCoords.x} y : ${eventCoords.y}`)
+                    } else {
+                        
+                        console.info(`not in a label at x : ${eventCoords.x} y : ${eventCoords.y}`)
+                    }
+                });
+                
 
                 if (isClickOnExistingPointsIdx.length > 0) {
                     onEvent(
@@ -377,41 +387,21 @@ const useAnnotationEngine = ({
                 const eventCoords = canvasCoordinateOf(canvas, event);
                 const isMoveOnExistingPointsIdx = detectMoveOnExistingPoints(annotationPointsRef.current, eventCoords);
 
-                // startLaurent
-                const hoverableAreas = annotations.filter((annotation) => annotation.coordinates.length >= 2);
-                // @laurent found on SOF +D
-                const isInsidePolygon = (point: Coordinates, polygonPoints: Coordinates[]) => {
-
-                    const {x} = point; 
-                    const {y} = point;                     
-                    let isInside = false;
-                    for (let i = 0, j = polygonPoints.length - 1; i < polygonPoints.length; j = i++) {
-                        const xi = polygonPoints[i].x;
-                        const yi = polygonPoints[i].y;
-                        const xj = polygonPoints[j].x;
-                        const yj = polygonPoints[j].y;
-                        
-                        const intersect = ((yi > y) !== (yj > y))
-                            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-                        if (intersect) isInside = !isInside;
-                    }
-                    
-                    return isInside;
-                }
-
-                const isInsideExistingPolygon = hoverableAreas.some((hoverableArea) => isInsidePolygon(eventCoords, hoverableArea.coordinates))
-                if (isInsideExistingPolygon) {
-                    onEvent(
-                        {
-                            type: 'mouse_move_on_label_area_event',
-                            at: eventCoords,
-                            pointIds: isMoveOnExistingPointsIdx,
-                            currentGeometry: [...annotationPointsRef.current],
-                            event,
-                        },
-                        operations,
-                    );
-                }
+               
+                // if (isInLabel) {
+                //     onEvent(
+                //         {
+                //             type: 'mouse_move_on_label_area_event',
+                //             at: eventCoords,
+                //             pointIds: isMoveOnExistingPointsIdx,
+                //             currentGeometry: [...annotationPointsRef.current],
+                //             event,
+                //         },
+                //         operations,
+                //     );
+                // } else {
+                //     console.info('no')
+                // }
 
                 // endLaurent
                 if (isMoveOnExistingPointsIdx.length > 0) {
