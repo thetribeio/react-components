@@ -20,6 +20,7 @@ export type Events =
     | MouseDownOnExistingPointEvent
     | MouseMoveOnExistingPointEvent
     | MouseMoveOnLabelAreaEvent // @laurent
+    | MouseDownOnAnnotationLabelEvent // @laurent
     | MouseMove
     | MouseUp
     | ReleaseKeyEvent
@@ -79,6 +80,13 @@ export interface MouseMoveOnLabelAreaEvent {
     at: Coordinates;
     pointIds: Array<PointId>;
     currentGeometry: Array<Coordinates>;
+    event: MouseEvent;
+}
+
+export interface MouseDownOnAnnotationLabelEvent {
+    type: 'mouse_down_on_annotation_label_event';
+    at: Coordinates;
+    clickedAnnotation: Annotation;
     event: MouseEvent;
 }
 
@@ -336,27 +344,24 @@ const useAnnotationEngine = ({
                     eventCoords,
                     );
                 // @laurent
-                const clickedAnnotation = annotations.find((annotation) => {
-                    const isClickOnPreviouslyDrawnPointsIdx = detectClickOnExistingPoints(
-                        annotation.coordinates,
-                        eventCoords,
-                        )
-
-                    return isClickOnPreviouslyDrawnPointsIdx.length > 0
-                })
-
-                const labels = annotations.map((annotation) => annotation?.label);
-                const labelPaths = annotations.map((annotation) => annotation?.label.path);
                 const renderingContext = renderingContextRef.current;
-                labels.forEach((label) => {
-                    if(renderingContext?.isPointInPath(label.path, eventCoords.x, eventCoords.y)) {
-                        console.info(`in label ${label.name} at x : ${eventCoords.x} y : ${eventCoords.y}`)
-                    } else {
-                        
-                        console.info(`not in a label at x : ${eventCoords.x} y : ${eventCoords.y}`)
-                    }
-                });
-                
+                // FIXME remove the !
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                const annotationLabelWasClicked = (annotation: Annotation, coordinates: Coordinates): boolean => !!renderingContext?.isPointInPath(annotation!.label!.path, coordinates.x, coordinates.y);
+
+                const clickedLabelAnnotation = annotations.find((annotation) => annotationLabelWasClicked(annotation, eventCoords));
+
+                if (clickedLabelAnnotation) {
+                    onEvent(
+                        {
+                            type: 'mouse_down_on_annotation_label_event',
+                            at: eventCoords,
+                            event,
+                            clickedAnnotation: clickedLabelAnnotation,
+                        },
+                        operations,
+                    )
+                }
 
                 if (isClickOnExistingPointsIdx.length > 0) {
                     onEvent(

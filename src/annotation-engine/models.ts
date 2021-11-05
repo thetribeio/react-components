@@ -10,7 +10,7 @@ export type Annotation = {
     name: string;
     type: ShapeType;
     coordinates: Coordinates[];
-    label: {
+    label?: {
         name: string,
         path: Path2D,
     };

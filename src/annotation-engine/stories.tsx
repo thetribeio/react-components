@@ -240,9 +240,9 @@ const useEngineStateMachine = (availableShapeTypes: Array<ShapeType>, annotation
                     console.info(event.pointIds)
                     console.info('clic existing point')
                     break;
-                case 'mouse_move_on_label_area_event':
-                    console.info('move !')
-                    
+                case 'mouse_down_on_annotation_label_event':
+                    console.info('clicked annotation !', event.clickedAnnotation)
+                    setAnnotationToEdit(event.clickedAnnotation);
                     break;
                 default:
                     break;
