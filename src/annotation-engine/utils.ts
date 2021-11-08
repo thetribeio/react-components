@@ -149,19 +149,20 @@ export const drawLine = (
     renderingContext.closePath();
 };
 
-export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[]): void => {
+export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], annotationToHighlightId: string | undefined): void => {
     annotations.forEach((annotation) => {
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
 
+        const selectStyle = annotation.id === annotationToHighlightId ? 'SELECTED' : 'UNSELECTED';
         annotation.coordinates.forEach((coordinates: Coordinates, index: number) => {
             if (previousCoordinates) {
                 if (annotation.isClosed === false) {
                     if (index > 0) {
-                        drawLine('UNSELECTED', renderingContext, previousCoordinates, coordinates);
+                        drawLine(selectStyle, renderingContext, previousCoordinates, coordinates);
                     }
                 } else {
-                    drawLine('UNSELECTED', renderingContext, previousCoordinates, coordinates);
+                    drawLine(selectStyle, renderingContext, previousCoordinates, coordinates);
                 }
             }
 
@@ -179,7 +180,7 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
                 x: middlePoint.x + textSize.width / 2,
                 y: middlePoint.y - 10,
             };
-            drawPoint('UNSELECTED', renderingContext, middlePoint);
+            drawPoint(selectStyle, renderingContext, middlePoint);
             const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
             annotation.label = {
                 name: annotation.name,

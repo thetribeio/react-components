@@ -102,6 +102,8 @@ export interface Operations {
     addPoint(at: Coordinates): PointId;
     highlightExistingPoint(pointId: PointId): void;
     removeHighlightPoint(): void;
+    highlightAnnotation(annotationId: string | undefined): void;
+    removeHighlightAnnotation(): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
     drawOnCanvas(draw: (context2d: CanvasRenderingContext2D) => void): void;
@@ -116,9 +118,9 @@ const useAnnotationEngine = ({
 }: UseAnnotationEngineArgs): void => {
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
+    const annotationToHighlightIdRef = useRef<string | undefined>(undefined);
     const annotationHighlightPointIndexRef = useRef<number | undefined>(undefined);
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
-    // const [labelPaths, setLabelPaths] = useState([]);
 
     const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
         const rect = canvas.getBoundingClientRect();
@@ -148,6 +150,7 @@ const useAnnotationEngine = ({
     };
 
     useEffect(() => {
+        annotationToHighlightIdRef.current = undefined;
         if (annotationToEdit) {
             annotationToEditPointsRef.current = annotationToEdit.coordinates;
         } else {
@@ -181,7 +184,7 @@ const useAnnotationEngine = ({
 
         renderingContextRef.current.clearRect(0, 0, currentCanvasRef.width, currentCanvasRef.height);
 
-        drawAnnotations(renderingContextRef.current, annotationsToDraw);
+        drawAnnotations(renderingContextRef.current, annotationsToDraw, annotationToHighlightIdRef.current);
 
         drawCurrentAnnotation(
             renderingContextRef.current,
@@ -213,6 +216,12 @@ const useAnnotationEngine = ({
             },
             removeHighlightPoint: () => {
                 annotationHighlightPointIndexRef.current = undefined;
+            },
+            highlightAnnotation: (annotationId: string | undefined) => {
+                annotationToHighlightIdRef.current = annotationId;
+            },
+            removeHighlightAnnotation: () => {
+                annotationToHighlightIdRef.current = undefined;
             },
             movePoint: (pointId: PointId, to: Coordinates) => {
                 annotationToEditPointsRef.current[pointId] = to;
@@ -271,6 +280,7 @@ const useAnnotationEngine = ({
 
         const handleMouseDown = (event: MouseEvent) =>
             handleEvent((canvas) => {
+                console.info('in handlemouse down')
                 const eventCoords = canvasCoordinateOf(canvas, event);
                 const isClickOnExistingPointsIdx = detectClickOnExistingPoints(
                     annotationToEditPointsRef.current,
@@ -285,7 +295,7 @@ const useAnnotationEngine = ({
                 const clickedLabelAnnotation = annotations.find((annotation) => annotationLabelWasClicked(annotation, eventCoords));
 
                 if (clickedLabelAnnotation) {
-                    onEvent(
+                    return onEvent(
                         {
                             type: 'mouse_down_on_label_event',
                             at: eventCoords,
@@ -298,7 +308,7 @@ const useAnnotationEngine = ({
 
 
                 if (isClickOnExistingPointsIdx.length > 0) {
-                    onEvent(
+                    return onEvent(
                         {
                             type: 'mouse_down_on_existing_point_event',
                             at: eventCoords,
@@ -308,17 +318,18 @@ const useAnnotationEngine = ({
                         },
                         operations,
                     );
-                } else {
-                    onEvent(
-                        {
-                            type: 'mouse_down_event',
-                            at: eventCoords,
-                            currentGeometry: [...annotationToEditPointsRef.current],
-                            event,
-                        },
-                        operations,
-                    );
-                }
+                } 
+
+                return onEvent(
+                    {
+                        type: 'mouse_down_event',
+                        at: eventCoords,
+                        currentGeometry: [...annotationToEditPointsRef.current],
+                        event,
+                    },
+                    operations,
+                );
+                
             });
 
         const handleMouseMove = (event: MouseEvent) =>

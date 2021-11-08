@@ -250,15 +250,11 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
     const handleEvent = (event: Events, operations: Operations): void => {
         if (isModeInactif()) {
             switch (event.type) {
-                case 'mouse_down_event':
-                    break;
-                case 'mouse_down_on_existing_point_event':
-                    console.info(event.pointIds)
-                    console.info('clic existing point')
-                    break;
                 case 'mouse_down_on_label_event':
-                    console.info('clicked annotation !', event.clickedAnnotation);
-                    // setAnnotationToEdit(event.clickedAnnotation);
+                    operations.highlightAnnotation(event.clickedAnnotation.id)
+                    break;
+                case 'mouse_down_event':
+                    operations.removeHighlightAnnotation();
                     break;
                 default:
                     break;
