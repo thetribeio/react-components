@@ -1,10 +1,10 @@
-// eslint-disable-next-line max-classes-per-file
 import { Story, Meta } from '@storybook/react';
 import React, { useEffect, useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
 import Button from '../button';
-import { Annotation, Coordinates } from './models';
-import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent } from './use-annotation-engine';
+import { Annotation, Coordinates, StyleData, StyleDataById } from './models';
+import { clickStyle, editStyle, hiddenStyle, highlightStyle, hoverStyle } from './style/stories';
+import { Events, Handles, Operations, PointId, KeyDownEvent, KeyUpEvent, MouseUp } from './use-annotation-engine';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
 
 export default {
@@ -49,15 +49,19 @@ const Label = styled.label`
     color: white;
 `;
 
-type SaveAnnotationFunction = (geometry: Array<Coordinates>, isClosed: boolean) => void;
+type SaveAnnotationFunction = (geometry: Array<Coordinates>, isClosed: boolean) => string;
 
 const useSaveAnnotation = () => {
     const [annotations, setAnnotations] = useState<Annotation[]>([]);
     const [annotationToEdit, setAnnotationToEdit] = useState<Annotation | undefined>(undefined);
+    const [selectedItemId, setSelectedItemId] = useState('');
 
-    const saveAnnotation = (geometry: Array<Coordinates>, isClosed: boolean) => {
+    const saveAnnotation = (geometry: Array<Coordinates>, isClosed: boolean): string => {
+        let id = '';
         setAnnotations(annotations.map((annotation) => {
             if (annotation.id === annotationToEdit?.id) {
+                id = annotation.id;
+
                 return { ...annotationToEdit, coordinates: geometry, isClosed };
             }
 
@@ -65,39 +69,52 @@ const useSaveAnnotation = () => {
         }));
         setAnnotationToEdit(undefined);
         if (!annotationToEdit) {
-            const id = `${annotations.length ? Number(annotations[annotations.length - 1].id) + 1 : 1}`;
+            id = `${annotations.length ? Number(annotations[annotations.length - 1].id) + 1 : 1}`;
             setAnnotations([...annotations, { id, name: `Mesure ${id}`, coordinates: geometry, isClosed }]);
         }
+        setSelectedItemId(id);
+
+        return id;
     };
 
     return {
         annotations,
         annotationToEdit, setAnnotationToEdit,
         saveAnnotation,
+        selectedItemId,
+        setSelectedItemId,
     }
 }
 
 /**
  * Manages all the necessary states for the Annotation Engine
  */
-const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToEdit: Annotation | undefined, setAnnotationToEdit: React.Dispatch<React.SetStateAction<Annotation | undefined>>, saveAnnotation: SaveAnnotationFunction, refAE: RefObject<Handles>) => {
+const useEngineStateMachine = (
+    availableShapeTypes: Array<string>,
+    annotationToEdit: Annotation | undefined,
+    setAnnotationToEdit: React.Dispatch<React.SetStateAction<Annotation | undefined>>,
+    saveAnnotation: SaveAnnotationFunction,
+    refAE: RefObject<Handles>,
+    setSelectedItemId: React.Dispatch<React.SetStateAction<string>>,
+    styleOps: StyleOperations,
+) => {
     const [numberOfPoints, setNumberOfPoints] = useState(0);
     const [shapeType, setShapeType] = useState(availableShapeTypes[0]);
     const [isShapeClosed, setIsShapeClosed] = useState(true);
+    const [currentlyHoveredAnnotationId, setCurrentlyHoveredAnnotationId] = useState('');
 
     const isModeEdition = () => annotationToEdit !== undefined;
     const isModeCreation = () => !isModeEdition() && numberOfPoints > 0;
     const isModeInactif = () => !isModeCreation() && !isModeEdition();
     // key codes map for shape validation (polygon and polylines)
     const shapeFinishedOnKeyCodes = ['Space'];
+    const cancelOnKeyCodes = ['Escape'];
 
     const initState = () => ({
         dragPoint: undefined,
-        tempPoint: undefined,
     });
     const state = useRef<{
         dragPoint: PointId | undefined,
-        tempPoint: PointId | undefined,
     }>(initState());
 
     const cancelCreationAndEdition = () => {
@@ -113,6 +130,9 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
      */
     useEffect(() => {
         switch (shapeType) {
+            case 'INACTIVE':
+                setNumberOfPoints(0);
+                break;
             case 'POINT':
             default:
                 setNumberOfPoints(1);
@@ -154,9 +174,10 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
     const isGeometryComplete = (length: number) => {
         switch (shapeType) {
             case 'POINT':
+                return length === 1;
             case 'LINE':
+                return length === 2;
             default:
-                return length >= numberOfPoints + (state.current.tempPoint !== undefined ? 1 : 0);
             case 'POLYGON':
             case 'POLYLINE':
                 return false;
@@ -170,10 +191,15 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         switch (shapeType) {
             case 'LINE':
                 return isModeEdition();
-            case 'POLYGON':
-                return length - (state.current.tempPoint !== undefined ? 1 : 0) >= 3;
+            case 'POLYGON':{
+                const lengthToCheck = isModeEdition()
+                    ? length
+                    : length - 1;
+
+                return lengthToCheck  >= 3;
+            }
             case 'POLYLINE':
-                return length - (state.current.tempPoint !== undefined ? 1 : 0) >= 2;
+                return length >= 2;
             default:
                 return false;
         }
@@ -188,44 +214,25 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         const { length } = currentGeometry;
         switch (shapeType) {
             case 'POLYGON':
-                return isGeometryReadyToBeManuallyCompleted(length) && pointIds.some((id) => id === 0);
+                return isGeometryReadyToBeManuallyCompleted(length - 1) && pointIds.some((id) => id === 0);
             default:
                 return false;
         }
     }
 
-    const createNewPoint = (at: Coordinates, currentGeometry: Coordinates[], operations: Operations) => {
-        if (state.current.tempPoint === undefined) {
-            // First point
-            operations.addPoint(at);
-        }
-        if (!isGeometryComplete(currentGeometry.length + 1)) {
-            // Create next point ahead & validate current point
-            state.current.tempPoint = operations.addPoint(at);
-        } else {
-            // just validate last point
-            state.current.tempPoint = undefined;
-        }
-    };
+    const createNewPoint = (at: Coordinates, operations: Operations): number => operations.addPoint(at);
 
-    const shapeFinished = (currentGeometry: Coordinates[], operations: Operations) => {
-        if (state.current.tempPoint) {
-            currentGeometry.splice(state.current.tempPoint, 1);
-        }
-        operations.finishCurrentLine();
+    const shapeFinished = (currentGeometry: Coordinates[]) => {
         state.current = initState();
-        saveAnnotation(currentGeometry, isShapeClosed);
-    };
-
-    const lastValidatedPoint = (currentGeometry: Coordinates[]): PointId => {
-        if (state.current.tempPoint === currentGeometry.length - 1) {
-            return currentGeometry.length - 2;
+        let geometryToSave = currentGeometry;
+        // remove unnecessary temporary point (the one under the cursor)
+        if (isModeCreation() && (shapeType !== 'POINT' && shapeType !== 'LINE')) {
+                geometryToSave = currentGeometry.slice(0, currentGeometry.length - 1)
         }
-
-        return currentGeometry.length - 1;
+        const id = saveAnnotation(geometryToSave, isShapeClosed);
+        styleOps.removeStyleFromPointsByStyleNames(hiddenStyle.name);
+        styleOps.setStyleExclusivelyToAnnotationId(clickStyle, id);
     };
-
-    const stillOnPreviousPoint = (onPoints: Array<PointId>, currentGeometry: Array<Coordinates>) => onPoints.includes(lastValidatedPoint(currentGeometry));
 
     const keyDownEvent = (event: KeyDownEvent) => {
         if (event.event.code === 'Space') {
@@ -234,63 +241,89 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         }
     }
 
-    const keyUpEvent = (event: KeyUpEvent, operations: Operations) => {
+    const keyUpEvent = (event: KeyUpEvent) => {        
         if (shapeFinishedOnKeyCodes.includes(event.event.code) && isGeometryReadyToBeManuallyCompleted(event.currentGeometry.length)) {
-            shapeFinished(event.currentGeometry, operations);
+            shapeFinished(event.currentGeometry);
+        }
+        if (cancelOnKeyCodes.includes(event.event.code)) {
+            cancelCreationAndEdition();
         }
     }
-
-    const mouseDownEvent = (event: MouseDownEvent | MouseDownOnExistingPointEvent, operations: Operations) => {
-        createNewPoint(event.at, event.currentGeometry, operations);
+    
+    const mouseUpEvent = (event: MouseUp, operations: Operations) => {
+        if (isGeometryComplete(event.currentGeometry.length)) {
+            return shapeFinished(event.currentGeometry);
+        }
+        const newPointIndex = createNewPoint(event.at, operations);
+         
+        return styleOps.setStyleExclusivelyToPointId(hiddenStyle, `${newPointIndex}`)
     }
-
+    
     const handleEvent = (event: Events, operations: Operations): void => {
         if (isModeInactif()) {
-            return;
+            switch (event.type) {
+                case 'mouse_down_on_annotation_event':
+                    setSelectedItemId(event.annotationsId[0]);
+                    styleOps.setStyleExclusivelyToAnnotationId(clickStyle, event.annotationsId[0]);
+
+                    break;
+
+                case 'mouse_move_on_annotation_event': {
+                    const { annotationsIdsWithStyle } = event;
+                    const hoveredAnnotationsId = annotationsIdsWithStyle
+                        .filter((annotation) => annotation?.style?.name !== clickStyle.name)
+                        .map((annotation) => annotation.id);
+                    const newHoveredAnnotationId = hoveredAnnotationsId[0];
+
+                    if (newHoveredAnnotationId) {
+                        if (currentlyHoveredAnnotationId !== newHoveredAnnotationId) {
+                            setCurrentlyHoveredAnnotationId(newHoveredAnnotationId);
+                        }
+                        styleOps.setStyleExclusivelyToAnnotationId(hoverStyle, newHoveredAnnotationId);
+                    }
+                    break;
+                }
+                case 'mouse_move_event':
+                    styleOps.removeStylesFromAnnotationsByStyleNames(hoverStyle.name);
+                    break;
+                default:
+                    break;
+            }
         }
         if (isModeCreation()) {
             switch (event.type) {
                 case 'mouse_move_on_existing_point_event':
                     if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
-                        operations.highlightExistingPoint(0);
+                        styleOps.setStyleExclusivelyToPointId(highlightStyle, '0');
                     }
                     break;
                 case 'key_down_event':
                     keyDownEvent(event);
                     break;
                 case 'key_up_event':
-                    keyUpEvent(event, operations);
-                    break;
-                case 'mouse_down_event':
-                    mouseDownEvent(event, operations);
+                    keyUpEvent(event);
                     break;
                 case 'mouse_down_on_existing_point_event':
-                    if (event.type === 'mouse_down_on_existing_point_event'
-                        && isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
-                        shapeFinished(event.currentGeometry, operations);
-                        break;
+                case 'mouse_down_event':
+                    if (event.currentGeometry.length === 0) {
+                        operations.addPoint(event.at);
+                        styleOps.setStyleExclusivelyToPointId(hiddenStyle, '0');
                     }
-                    mouseDownEvent(event, operations);
+                    styleOps.removeStyleFromPointsByStyleNames(hiddenStyle.name);
                     break;
                 case 'mouse_move_event':
-                    operations.removeHighlightPoint();
-                    if (state.current.tempPoint !== undefined) {
-                        // move point under cursor
-                        operations.movePoint(state.current.tempPoint, event.to);
-                    }
+                    styleOps.removeStyleFromPointsByStyleNames(highlightStyle.name)
+                    // move point under cursor
+                    operations.movePoint(event.currentGeometry.length - 1, event.to);
                     break;
                 case 'mouse_up_on_existing_point_event':
-                    if (!stillOnPreviousPoint(event.pointIds, event.currentGeometry)) {
-                        createNewPoint(event.at, event.currentGeometry, operations);
-                    }
-                    if (isGeometryComplete(event.currentGeometry.length)) {
-                        shapeFinished(event.currentGeometry, operations);
+                    if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
+                        shapeFinished(event.currentGeometry);
+                        break;
                     }
                     break;
                 case 'mouse_up_event':
-                    if (isGeometryComplete(event.currentGeometry.length)) {
-                        shapeFinished(event.currentGeometry, operations);
-                    }
+                    mouseUpEvent(event, operations);
                     break;
                 default:
                     // nothing to do
@@ -302,7 +335,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                     keyDownEvent(event);
                     break;
                 case 'key_up_event':
-                    keyUpEvent(event, operations);
+                    keyUpEvent(event);
                     break;
                 case 'mouse_down_on_existing_point_event':
                     [state.current.dragPoint] = event.pointIds;
@@ -332,22 +365,148 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
     }
 }
 
+interface StyleOperations {
+    styleForAnnotations: StyleDataById;
+    styleForPointsToEdit: StyleDataById;
+    annotationHasStyle(id: string, styleName: string): boolean;
+    setStyleExclusivelyToAnnotationId(style: StyleData, id: string): void;
+    setStyleExclusivelyToPointId(style: StyleData, id: string): void;
+    setStyleToAnnotationsByIndexes(styleData: StyleData, ...annotationsId: string[]): void;
+    removeStyleFromAnnotationsByIndexes(...annotationsId: string[]): void;
+    removeStylesFromAnnotationsByStyleNames(...styleNames: string[]): void;
+    removeStyleFromPointsByStyleNames(...styleNames: string[]): void;
+}
+
+/**
+ * Allows to manage canvas drawing styles from outside the canvas 
+ */
+const useStyleOperations = (): StyleOperations => {
+    // FIXME LATER : refacto exclusive styles
+    // have for example a map of exclusive styles : key stylename value : one string/number
+
+    const [styleForAnnotations, setStyleForAnnotations] = useState<StyleDataById>(new Map());
+    const [styleForPointsToEdit, setStyleForPointsToEdit] = useState<StyleDataById>(new Map());
+    const annotationHasStyle = (id: string, styleName: string): boolean => Boolean(styleForAnnotations.get(id)?.name === styleName);
+
+    const setStyleToAnnotationsByIndexes = (style: StyleData, ...annotationsId: string[]): void => {
+        const newStyleForAnnotations = new Map(styleForAnnotations);
+        annotationsId.forEach((id) => {
+            newStyleForAnnotations.set(id, style);
+        })
+        setStyleForAnnotations(newStyleForAnnotations);
+    };
+
+    const removeStyleFromAnnotationsByIndexes = (...annotationsId: string[]): void => {
+        const newStyleForAnnotations = new Map(styleForAnnotations);
+        annotationsId.forEach((id) => {
+            newStyleForAnnotations.delete(id);
+        })
+        setStyleForAnnotations(newStyleForAnnotations);
+    };
+
+    const setStyleExclusivelyToId = (setState: React.Dispatch<React.SetStateAction<StyleDataById>>, state: StyleDataById, exclusiveStyle: StyleData, itemId: string) => {
+        const newState: StyleDataById = new Map(state);
+        newState.forEach((style, id) => {
+            if (style.name === exclusiveStyle.name) {
+                newState.delete(id);
+            }
+        })
+        newState.set(itemId, exclusiveStyle);
+        setState(newState);
+    };
+
+    const setStyleExclusivelyToAnnotationId = (exclusiveStyle: StyleData, annotationId: string): void => {
+        setStyleExclusivelyToId(setStyleForAnnotations, styleForAnnotations, exclusiveStyle, annotationId)
+    };
+
+    const setStyleExclusivelyToPointId = (exclusiveStyle: StyleData, pointId: string): void => {
+        setStyleExclusivelyToId(setStyleForPointsToEdit, styleForPointsToEdit, exclusiveStyle, pointId)
+    }
+
+    const removeStylesFromAnnotationsByStyleNames = (...styleNames: string[]): void => {
+        const newStyleForAnnotations = new Map(styleForAnnotations);
+        newStyleForAnnotations.forEach((styleData, annotationId) => {
+            if (styleNames.includes(styleData.name)) {
+                newStyleForAnnotations.delete(annotationId);
+            }
+        })
+        setStyleForAnnotations(newStyleForAnnotations);
+    };
+    // FIXME later : refacto (or not, if StyleDataById are split between anno and points styles)
+    const removeStyleFromPointsByStyleNames = (...styleNames: string[]): void => {
+        const newStyleForPointsToEdit = new Map(styleForPointsToEdit);
+        newStyleForPointsToEdit.forEach((styleData, annotationId) => {
+            if (styleNames.includes(styleData.name)) {
+                newStyleForPointsToEdit.delete(annotationId);
+            }
+        })
+        setStyleForPointsToEdit(newStyleForPointsToEdit);
+    };
+
+    return {
+        setStyleToAnnotationsByIndexes,
+        removeStyleFromAnnotationsByIndexes,
+        annotationHasStyle,
+        styleForAnnotations,
+        styleForPointsToEdit,
+        setStyleExclusivelyToAnnotationId,
+        removeStylesFromAnnotationsByStyleNames,
+        removeStyleFromPointsByStyleNames,
+        setStyleExclusivelyToPointId,
+    }
+};
+
 const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
-    const availableShapeTypes: Array<string> = ['POINT', 'LINE', 'POLYGON', 'POLYLINE'];
+    const availableShapeTypes: Array<string> = ['INACTIVE', 'POINT', 'LINE', 'POLYGON', 'POLYLINE'];
     const refAE = useRef<Handles>(null);
+    const styleOps = useStyleOperations();
+    const styleForAnnotationToEdit = editStyle.style;
 
     const {
         annotations,
         annotationToEdit, setAnnotationToEdit,
         saveAnnotation,
+        selectedItemId,
+        setSelectedItemId,
     } = useSaveAnnotation();
+
 
     const {
         handleEvent,
         shapeType, setShapeType,
         cancelCreationAndEdition,
-    } = useEngineStateMachine(availableShapeTypes, annotationToEdit, setAnnotationToEdit, saveAnnotation, refAE);
+    } = useEngineStateMachine(
+            availableShapeTypes,
+            annotationToEdit,
+            setAnnotationToEdit,
+            saveAnnotation, 
+            refAE,
+            setSelectedItemId,
+            styleOps
+        );
+  
+    const handleMouseLeave = (): void => {
+        styleOps.removeStylesFromAnnotationsByStyleNames(hoverStyle.name);
+    };
 
+    const handleMouseOver = (id: string): void => {
+        if (!styleOps.annotationHasStyle(id, clickStyle.name)) {
+            styleOps.setStyleExclusivelyToAnnotationId(hoverStyle, id);
+        }
+    }
+
+    const handleClick = (id: string): void => {
+        styleOps.setStyleExclusivelyToAnnotationId(clickStyle, id);
+        setSelectedItemId(id);
+    };
+
+    const handleKeyDown = (event: React.KeyboardEvent, id: string) => {
+        if (event.code === 'Space') {
+            styleOps.setStyleExclusivelyToAnnotationId(clickStyle, id)
+            setSelectedItemId(id);
+        }
+    }
+ 
     return (
         <AnnotationsContainer>
             <StyledAnnotationEngine
@@ -358,6 +517,9 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
                 annotationToEdit={annotationToEdit}
                 annotations={annotations}
                 onEvent={handleEvent}
+                styleForAnnotationToEdit={styleForAnnotationToEdit}
+                styleForAnnotations={styleOps.styleForAnnotations}
+                styleForPointsToEdit={styleOps.styleForPointsToEdit}
             />
             <ActionContainer>
                 <Label>Type de forme</Label>
@@ -371,8 +533,22 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
             <div style={{ color: 'white' }}>
                 {annotations.map((annotation: Annotation) => (
                     <div key={annotation.id}>
-                        {annotation.name}{' '}
-                        <button onClick={() => setAnnotationToEdit(annotation)} type="button">
+                        <span 
+                            onClick={() => handleClick(annotation.id)}
+                            // FIXME LATER onFocus is for linter. 
+                            // eslint-disable-next-line @typescript-eslint/no-empty-function
+                            onFocus={() => {}}
+                            onKeyDown={(event) => handleKeyDown(event, annotation.id)}
+                            onMouseLeave={() => handleMouseLeave()}
+                            onMouseOver={() => handleMouseOver(annotation.id)}
+                            role="button"
+                            style={{color: `${annotation.id === selectedItemId ? 'red' : ''}`}}
+                            tabIndex={0}
+                        >{annotation.name}{' '}</span>
+                        <button onClick={() => {
+                            setAnnotationToEdit(annotation);
+                            styleOps.removeStylesFromAnnotationsByStyleNames(clickStyle.name)
+                        }} type="button">
                             EDIT
                         </button>
                     </div>

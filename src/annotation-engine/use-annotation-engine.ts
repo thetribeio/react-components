@@ -1,6 +1,7 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject, useImperativeHandle, ForwardedRef } from 'react';
-import { Annotation, Coordinates } from './models';
-import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
+import { Annotation, PointAnnotationPathData, AnnotationPathDataById, AnnotationStyle, Coordinates, StyleDataById, AnnotationPathData, PartialAnnotationStyle, AnnotationIdWithStyleData } from './models';
+import defaultStyle from './style/defaultStyleOptions';
+import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation, overloadStyle } from './utils';
 
 interface UseAnnotationEngineArgs {
     annotations: Annotation[];
@@ -8,6 +9,9 @@ interface UseAnnotationEngineArgs {
     onEvent: OnEvent;
     canvasRef: RefObject<HTMLCanvasElement>;
     ref: ForwardedRef<Handles>;
+    styleForAnnotations: StyleDataById;
+    styleForAnnotationToEdit?: PartialAnnotationStyle;
+    styleForPointsToEdit?: StyleDataById;
 }
 
 export interface Handles {
@@ -19,12 +23,15 @@ export type Events =
     | MouseDownEvent
     | MouseDownOnExistingPointEvent
     | MouseMoveOnExistingPointEvent
+    | MouseDownOnLabelEvent
+    | MouseMoveOnLabelEvent
     | MouseMove
     | MouseUp
     | KeyUpEvent
     | KeyDownEvent
     | MouseUpOnExistingPointEvent
     | MouseWheelEvent;
+    
 export type OnEvent = (event: Events, operations: Operations) => void;
 
 export interface MouseDownEvent {
@@ -41,6 +48,22 @@ export interface MouseDownOnExistingPointEvent {
     currentGeometry: Array<Coordinates>;
     event: MouseEvent;
 }
+
+export interface MouseDownOnLabelEvent {
+    type: 'mouse_down_on_annotation_event';
+    at: Coordinates;
+    annotationsId: string[];
+    event: MouseEvent;
+}
+
+export interface MouseMoveOnLabelEvent {
+    type: 'mouse_move_on_annotation_event';
+    at: Coordinates;
+    annotationsIdsWithStyle: AnnotationIdWithStyleData[];
+    event: MouseEvent;
+}
+
+
 
 export interface MouseMove {
     type: 'mouse_move_event';
@@ -93,8 +116,6 @@ export interface KeyDownEvent {
 
 export interface Operations {
     addPoint(at: Coordinates): PointId;
-    highlightExistingPoint(pointId: PointId): void;
-    removeHighlightPoint(): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
     drawOnCanvas(draw: (context2d: CanvasRenderingContext2D) => void): void;
@@ -106,11 +127,15 @@ const useAnnotationEngine = ({
     onEvent,
     canvasRef,
     ref,
+    styleForAnnotations,
+    styleForAnnotationToEdit,
+    styleForPointsToEdit,
 }: UseAnnotationEngineArgs): void => {
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
-    const annotationPointsRef = useRef<Coordinates[]>([]);
-    const annotationHighlightPointIndexRef = useRef<number | undefined>(undefined);
-    const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
+    const annotationToEditPointsRef = useRef<Coordinates[]>([]);
+    const annotationsPathsRef = useRef<AnnotationPathDataById>(new Map());
+    const annotationToEditStyleRef = useRef<AnnotationStyle>(defaultStyle);
+    const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 8;
 
     const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
         const rect = canvas.getBoundingClientRect();
@@ -121,11 +146,35 @@ const useAnnotationEngine = ({
         };
     };
 
-    const detectClickOnExistingPoints = (coordinates: Array<Coordinates>, clickAt: Coordinates): Array<PointId> =>
-        coordinates
-            .map((coordinate, idx) => ({ coordinate, idx }))
-            .filter(({ coordinate }) => areCoordinatesInsideCircle(coordinate, clickAt, 7))
-            .map(({ idx }) => idx);
+    const getMatchingAnnotationsId = (annotationsPathsMap: AnnotationPathDataById, { x, y }: Coordinates, renderingContext?: CanvasRenderingContext2D,): string[] => {
+        const matchingAnnotationsId: string[] = [];
+        const isPointInPath = (path: Path2D) => renderingContext?.isPointInPath(path, x, y);
+        const isPointAnnotation = (pathData: AnnotationPathData): pathData is PointAnnotationPathData => (pathData as PointAnnotationPathData).point !== undefined;
+        const isPointInShapeOrLabel = (pathData: AnnotationPathData): boolean => {
+
+            if (isPointInPath(pathData.label)) {
+                return true;
+            }
+
+            if (isPointAnnotation(pathData) && isPointInPath(pathData.point)) {
+                return true;
+            }
+
+            if (!isPointAnnotation(pathData)) {
+                return pathData.lines.some((line) => renderingContext?.isPointInStroke(line, x, y))
+            } 
+
+            return false;
+        }
+
+        annotationsPathsMap.forEach((annotationPaths, annotationId) => {
+            if (isPointInShapeOrLabel(annotationPaths)) {
+                matchingAnnotationsId.push(annotationId)
+            }
+        })
+
+        return matchingAnnotationsId;
+    }
 
     const detectMoveOnExistingPoints = (coordinates: Array<Coordinates>, moveOn: Coordinates): Array<PointId> => {
         const coords = [...coordinates];
@@ -140,12 +189,23 @@ const useAnnotationEngine = ({
     };
 
     useEffect(() => {
+        annotationToEditStyleRef.current = overloadStyle(defaultStyle, styleForAnnotationToEdit)
+    }, [styleForAnnotationToEdit]);
+
+    useEffect(() => {
+        annotationToEditPointsRef.current = [];
+        annotationsPathsRef.current.forEach((_annotationPath: AnnotationPathData, id: string) => {
+            if (!annotations.some((anno) => anno.id === id)) {
+                annotationsPathsRef.current.delete(id);
+            }
+        })
+
         if (annotationToEdit) {
-            annotationPointsRef.current = annotationToEdit.coordinates;
+            annotationToEditPointsRef.current = annotationToEdit.coordinates;
         } else {
-            annotationPointsRef.current = [];
+            annotationToEditPointsRef.current = [];
         }
-    }, [annotationToEdit]);
+    }, [annotationToEdit, annotations]);
 
     const annotationsToDraw = useMemo<Annotation[]>(() => {
         if (annotationToEdit) {
@@ -173,21 +233,21 @@ const useAnnotationEngine = ({
 
         renderingContextRef.current.clearRect(0, 0, currentCanvasRef.width, currentCanvasRef.height);
 
-        drawAnnotations(renderingContextRef.current, annotationsToDraw);
+        drawAnnotations(renderingContextRef.current, annotationsToDraw, styleForAnnotations, annotationsPathsRef.current);
 
         drawCurrentAnnotation(
             renderingContextRef.current,
-            annotationPointsRef.current,
-            annotationPointsRef.current === annotationToEdit?.coordinates,
-            annotationHighlightPointIndexRef.current,
+            annotationToEditPointsRef.current,
+            annotationToEditStyleRef.current,
+            styleForPointsToEdit,
             annotationToEdit,
         );
-    }, [annotationsToDraw, canvasRef, annotationToEdit]);
+    }, [annotationsToDraw, canvasRef, annotationToEdit, styleForAnnotations, styleForPointsToEdit]);
 
     useImperativeHandle(ref, () => ({
         cancelCreation() {
             if (annotationToEdit === undefined) {
-                annotationPointsRef.current = [];
+                annotationToEditPointsRef.current = [];
                 drawScene();
             }
         },
@@ -196,26 +256,31 @@ const useAnnotationEngine = ({
     // Initialize canvas
     useEffect(() => {
         const currentCanvasRef = canvasRef.current;
-
         let delayDraw: Array<(context2d: CanvasRenderingContext2D) => void> = [];
         const operations: Operations = {
-            addPoint: (at: Coordinates) => annotationPointsRef.current.push(at) - 1,
-            highlightExistingPoint: (pointId: PointId) => {
-                annotationHighlightPointIndexRef.current = pointId;
-            },
-            removeHighlightPoint: () => {
-                annotationHighlightPointIndexRef.current = undefined;
-            },
-            movePoint: (pointId: PointId, to: Coordinates) => {
-                annotationPointsRef.current[pointId] = to;
+            addPoint: (at: Coordinates) => annotationToEditPointsRef.current.push(at) - 1,
+            movePoint: (pointId: PointId, to: Coordinates): void => {
+                annotationToEditPointsRef.current[pointId] = to;
             },
             finishCurrentLine: () => {
-                annotationPointsRef.current = [];
+                annotationToEditPointsRef.current = [];
             },
             drawOnCanvas: (draw: (context2d: CanvasRenderingContext2D) => void) => {
                 delayDraw.push(draw);
             },
         };
+
+        const clickedExistingPointsIds = (coordinates: Array<Coordinates>, clickAt: Coordinates): Array<PointId> => {
+            const newCoordinates = [...coordinates];
+            if (!annotationToEdit) {
+                newCoordinates.pop()
+            }
+    
+            return newCoordinates
+                .map((coordinate, idx) => ({ coordinate, idx }))
+                .filter(({ coordinate }) => areCoordinatesInsideCircle(coordinate, clickAt, 7))
+                .map(({ idx }) => idx);
+        }
 
         const handleEvent = (handler: (canvas: HTMLCanvasElement) => void) => {
             if (currentCanvasRef) {
@@ -232,28 +297,28 @@ const useAnnotationEngine = ({
         const handleMouseUp = (event: MouseEvent) =>
             handleEvent((canvas) => {
                 const eventCoords = canvasCoordinateOf(canvas, event);
-                const isClickOnExistingPointsIdx = detectClickOnExistingPoints(
-                    annotationPointsRef.current,
+                const clickedPointIds = clickedExistingPointsIds(
+                    annotationToEditPointsRef.current,
                     eventCoords,
                 );
-
-                if (isClickOnExistingPointsIdx.length > 0) {
+                if (clickedPointIds.length > 0) {
                     onEvent(
                         {
                             type: 'mouse_up_on_existing_point_event',
                             at: eventCoords,
-                            pointIds: isClickOnExistingPointsIdx,
-                            currentGeometry: [...annotationPointsRef.current],
+                            pointIds: clickedPointIds,
+                            currentGeometry: [...annotationToEditPointsRef.current],
                             event,
                         },
                         operations,
-                    );
-                } else {
+                        );
+                    } else {
+                    const currentGeometry = [...annotationToEditPointsRef.current];
                     onEvent(
                         {
                             type: 'mouse_up_event',
                             at: eventCoords,
-                            currentGeometry: [...annotationPointsRef.current],
+                            currentGeometry,
                             event,
                         },
                         operations,
@@ -264,62 +329,98 @@ const useAnnotationEngine = ({
         const handleMouseDown = (event: MouseEvent) =>
             handleEvent((canvas) => {
                 const eventCoords = canvasCoordinateOf(canvas, event);
-                const isClickOnExistingPointsIdx = detectClickOnExistingPoints(
-                    annotationPointsRef.current,
+                const renderingContext = renderingContextRef.current;
+
+                const matchingAnnotationsId = getMatchingAnnotationsId(annotationsPathsRef.current, eventCoords, renderingContext);
+
+                if (matchingAnnotationsId.length && !annotationToEdit) {
+                    return onEvent(
+                        {
+                            type: 'mouse_down_on_annotation_event',
+                            at: eventCoords,
+                            event,
+                            annotationsId: matchingAnnotationsId,
+                        },
+                        operations,
+                    )
+                }                
+                const clickedPointIds = clickedExistingPointsIds(
+                    annotationToEditPointsRef.current,
                     eventCoords,
                 );
 
-                if (isClickOnExistingPointsIdx.length > 0) {
-                    onEvent(
+                if (clickedPointIds.length > 0) {
+                    return onEvent(
                         {
                             type: 'mouse_down_on_existing_point_event',
                             at: eventCoords,
-                            pointIds: isClickOnExistingPointsIdx,
-                            currentGeometry: [...annotationPointsRef.current],
+                            pointIds: clickedPointIds,
+                            currentGeometry: [...annotationToEditPointsRef.current],
                             event,
                         },
                         operations,
                     );
-                } else {
-                    onEvent(
-                        {
-                            type: 'mouse_down_event',
-                            at: eventCoords,
-                            currentGeometry: [...annotationPointsRef.current],
-                            event,
-                        },
-                        operations,
-                    );
-                }
+                } 
+                
+                return onEvent(
+                    {
+                        type: 'mouse_down_event',
+                        at: eventCoords,
+                        currentGeometry: [...annotationToEditPointsRef.current],
+                        event,
+                    },
+                    operations,
+                );
+                
             });
 
         const handleMouseMove = (event: MouseEvent) =>
             handleEvent((canvas) => {
                 const eventCoords = canvasCoordinateOf(canvas, event);
-                const isMoveOnExistingPointsIdx = detectMoveOnExistingPoints(annotationPointsRef.current, eventCoords);
+                const renderingContext = renderingContextRef.current;
+                const matchingAnnotationsId = getMatchingAnnotationsId(annotationsPathsRef.current, eventCoords, renderingContext);
+                if (matchingAnnotationsId.length) {
+                    const annotationsIdsWithStyle = matchingAnnotationsId.map((id) => {
+                        const style = styleForAnnotations.get(id);
+
+                        return ({ id, style });
+                    })
+                    
+                    return onEvent(
+                        {
+                            type: 'mouse_move_on_annotation_event',
+                            at: eventCoords,
+                            event,
+                            annotationsIdsWithStyle,
+                        },
+                        operations,
+                    )
+                }
+
+                const isMoveOnExistingPointsIdx = detectMoveOnExistingPoints(annotationToEditPointsRef.current, eventCoords);
 
                 if (isMoveOnExistingPointsIdx.length > 0) {
-                    onEvent(
+                    return onEvent(
                         {
                             type: 'mouse_move_on_existing_point_event',
                             at: eventCoords,
                             pointIds: isMoveOnExistingPointsIdx,
-                            currentGeometry: [...annotationPointsRef.current],
+                            currentGeometry: [...annotationToEditPointsRef.current],
                             event,
                         },
                         operations,
                     );
-                } else {
-                    onEvent(
-                        {
-                            type: 'mouse_move_event',
-                            to: canvasCoordinateOf(canvas, event),
-                            currentGeometry: [...annotationPointsRef.current],
-                            event,
-                        },
-                        operations,
-                    );
-                }
+                } 
+
+                return onEvent(
+                    {
+                        type: 'mouse_move_event',
+                        to: canvasCoordinateOf(canvas, event),
+                        currentGeometry: [...annotationToEditPointsRef.current],
+                        event,
+                    },
+                    operations,
+                );
             });
 
         const handleMouseWheel = (event: WheelEvent) =>
@@ -340,7 +441,7 @@ const useAnnotationEngine = ({
                 onEvent(
                     {
                         type: 'key_up_event',
-                        currentGeometry: [...annotationPointsRef.current],
+                        currentGeometry: [...annotationToEditPointsRef.current],
                         event,
                     },
                     operations,
@@ -352,7 +453,7 @@ const useAnnotationEngine = ({
                 onEvent(
                     {
                         type: 'key_down_event',
-                        currentGeometry: [...annotationPointsRef.current],
+                        currentGeometry: [...annotationToEditPointsRef.current],
                         event,
                     },
                     operations,
@@ -369,10 +470,8 @@ const useAnnotationEngine = ({
                 currentCanvasRef.addEventListener('wheel', handleMouseWheel);
                 document.addEventListener('keyup', handleKeyUp);
                 document.addEventListener('keydown', handleKeyDown);
-
                 currentCanvasRef.width = currentCanvasRef.offsetWidth;
                 currentCanvasRef.height = currentCanvasRef.offsetHeight;
-
                 renderingContextRef.current = canvasRenderingContext;
 
                 drawScene();
@@ -389,7 +488,7 @@ const useAnnotationEngine = ({
                 document.removeEventListener('keydown', handleKeyDown);
             }
         };
-    }, [drawScene, canvasRef, onEvent]);
+    }, [drawScene, canvasRef, onEvent, annotations, styleForAnnotations, annotationToEdit, styleForPointsToEdit]);
 };
 
 export default useAnnotationEngine;
