@@ -149,12 +149,12 @@ export const drawLine = (
     renderingContext.closePath();
 };
 
-export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], annotationToHighlightId: string | undefined): void => {
+export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], annotationToHighlightId: string | undefined, annotationToTemporaryHighlightId: string | undefined): void => {
     annotations.forEach((annotation) => {
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
 
-        const selectStyle = annotation.id === annotationToHighlightId ? 'SELECTED' : 'UNSELECTED';
+        const selectStyle = (annotation.id === annotationToHighlightId || annotation.id === annotationToTemporaryHighlightId) ? 'SELECTED' : 'UNSELECTED';
         annotation.coordinates.forEach((coordinates: Coordinates, index: number) => {
             if (previousCoordinates) {
                 if (annotation.isClosed === false) {

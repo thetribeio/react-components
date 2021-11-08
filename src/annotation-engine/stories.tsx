@@ -256,6 +256,12 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                 case 'mouse_down_event':
                     operations.removeHighlightAnnotation();
                     break;
+                case 'mouse_move_on_label_event':
+                    operations.temporaryHighlightAnnotation(event.hoveredAnnotationId)
+                    break;
+                case 'mouse_move_event':
+                    operations.removeTemporaryHighlightAnnotation();
+                    break;
                 default:
                     break;
             }

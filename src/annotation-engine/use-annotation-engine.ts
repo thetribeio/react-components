@@ -18,8 +18,9 @@ export type PointId = number;
 export type Events =
     | MouseDownEvent
     | MouseDownOnExistingPointEvent
-    | MouseDownOnLabelEvent
     | MouseMoveOnExistingPointEvent
+    | MouseDownOnLabelEvent
+    | MouseMoveOnLabelEvent
     | MouseMove
     | MouseUp
     | KeyUpEvent
@@ -42,10 +43,18 @@ export interface MouseDownOnExistingPointEvent {
     currentGeometry: Array<Coordinates>;
     event: MouseEvent;
 }
+
 export interface MouseDownOnLabelEvent {
     type: 'mouse_down_on_label_event';
     at: Coordinates;
     clickedAnnotationId: string;
+    event: MouseEvent;
+}
+
+export interface MouseMoveOnLabelEvent {
+    type: 'mouse_move_on_label_event';
+    at: Coordinates;
+    hoveredAnnotationId: string;
     event: MouseEvent;
 }
 
@@ -104,6 +113,8 @@ export interface Operations {
     removeHighlightPoint(): void;
     highlightAnnotation(annotationId: string | undefined): void;
     removeHighlightAnnotation(): void;
+    temporaryHighlightAnnotation(annotationId: string | undefined): void;
+    removeTemporaryHighlightAnnotation(): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
     drawOnCanvas(draw: (context2d: CanvasRenderingContext2D) => void): void;
@@ -119,6 +130,7 @@ const useAnnotationEngine = ({
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
     const annotationToHighlightIdRef = useRef<string | undefined>(undefined);
+    const annotationToTemporaryHighlightIdRef = useRef<string | undefined>(undefined);
     const annotationHighlightPointIndexRef = useRef<number | undefined>(undefined);
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
 
@@ -184,7 +196,7 @@ const useAnnotationEngine = ({
 
         renderingContextRef.current.clearRect(0, 0, currentCanvasRef.width, currentCanvasRef.height);
 
-        drawAnnotations(renderingContextRef.current, annotationsToDraw, annotationToHighlightIdRef.current);
+        drawAnnotations(renderingContextRef.current, annotationsToDraw, annotationToHighlightIdRef.current, annotationToTemporaryHighlightIdRef.current);
 
         drawCurrentAnnotation(
             renderingContextRef.current,
@@ -222,6 +234,12 @@ const useAnnotationEngine = ({
             },
             removeHighlightAnnotation: () => {
                 annotationToHighlightIdRef.current = undefined;
+            },
+            temporaryHighlightAnnotation: (annotationId: string | undefined) => {
+                annotationToTemporaryHighlightIdRef.current = annotationId;
+            },
+            removeTemporaryHighlightAnnotation: () => {
+                annotationToTemporaryHighlightIdRef.current = undefined;
             },
             movePoint: (pointId: PointId, to: Coordinates) => {
                 annotationToEditPointsRef.current[pointId] = to;
@@ -283,11 +301,12 @@ const useAnnotationEngine = ({
                 const eventCoords = canvasCoordinateOf(canvas, event);
                 const renderingContext = renderingContextRef.current;
 
-                // FIXME remove the !
+                // FIXME Laurent remove the !
+                // FIXME 2 Laurent : refacto this piece of code shared with other event
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                const annotationLabelWasClicked = (annotation: Annotation, coordinates: Coordinates): boolean => !!renderingContext?.isPointInPath(annotation!.label!.path, coordinates.x, coordinates.y);
+                const annotationLabelWasSelected = (annotation: Annotation, coordinates: Coordinates): boolean => !!renderingContext?.isPointInPath(annotation!.label!.path, coordinates.x, coordinates.y);
 
-                const clickedLabelAnnotation = annotations.find((annotation) => annotationLabelWasClicked(annotation, eventCoords));
+                const clickedLabelAnnotation = annotations.find((annotation) => annotationLabelWasSelected(annotation, eventCoords));
 
                 if (clickedLabelAnnotation) {
                     return onEvent(
@@ -295,6 +314,7 @@ const useAnnotationEngine = ({
                             type: 'mouse_down_on_label_event',
                             at: eventCoords,
                             event,
+                            // FIXME Laurent : remove "click" notion
                             clickedAnnotationId: clickedLabelAnnotation.id,
                         },
                         operations,
@@ -334,10 +354,33 @@ const useAnnotationEngine = ({
         const handleMouseMove = (event: MouseEvent) =>
             handleEvent((canvas) => {
                 const eventCoords = canvasCoordinateOf(canvas, event);
+                const renderingContext = renderingContextRef.current;
+
+                // FIXME Laurent remove the !
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                const annotationLabelWasSelected = (annotation: Annotation, coordinates: Coordinates): boolean => !!renderingContext?.isPointInPath(annotation!.label!.path, coordinates.x, coordinates.y);
+
+                // FIXME Laurent : remove "hovered" notion
+                // FIXME Laurent : refacto this
+                const hoveredLabelAnnotation = annotations.find((annotation) => annotationLabelWasSelected(annotation, eventCoords));
+
+                if (hoveredLabelAnnotation) {
+                    return onEvent(
+                        {
+                            type: 'mouse_move_on_label_event',
+                            at: eventCoords,
+                            event,
+                            hoveredAnnotationId: hoveredLabelAnnotation.id,
+                        },
+                        operations,
+                    )
+
+                }
+
                 const isMoveOnExistingPointsIdx = detectMoveOnExistingPoints(annotationToEditPointsRef.current, eventCoords);
 
                 if (isMoveOnExistingPointsIdx.length > 0) {
-                    onEvent(
+                    return onEvent(
                         {
                             type: 'mouse_move_on_existing_point_event',
                             at: eventCoords,
@@ -347,17 +390,18 @@ const useAnnotationEngine = ({
                         },
                         operations,
                     );
-                } else {
-                    onEvent(
-                        {
-                            type: 'mouse_move_event',
-                            to: canvasCoordinateOf(canvas, event),
-                            currentGeometry: [...annotationToEditPointsRef.current],
-                            event,
-                        },
-                        operations,
-                    );
-                }
+                } 
+
+                return onEvent(
+                    {
+                        type: 'mouse_move_event',
+                        to: canvasCoordinateOf(canvas, event),
+                        currentGeometry: [...annotationToEditPointsRef.current],
+                        event,
+                    },
+                    operations,
+                );
+                
             });
 
         const handleMouseWheel = (event: WheelEvent) =>
