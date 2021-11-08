@@ -113,6 +113,9 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
      */
     useEffect(() => {
         switch (shapeType) {
+            case 'INACTIVE':
+                setNumberOfPoints(0);
+                break;
             case 'POINT':
             default:
                 setNumberOfPoints(1);
@@ -333,7 +336,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
 }
 
 const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
-    const availableShapeTypes: Array<string> = ['POINT', 'LINE', 'POLYGON', 'POLYLINE'];
+    const availableShapeTypes: Array<string> = ['INACTIVE', 'POINT', 'LINE', 'POLYGON', 'POLYLINE'];
     const refAE = useRef<Handles>(null);
 
     const {
