@@ -45,7 +45,7 @@ export interface MouseDownOnExistingPointEvent {
 export interface MouseDownOnLabelEvent {
     type: 'mouse_down_on_label_event';
     at: Coordinates;
-    clickedAnnotation: Annotation;
+    clickedAnnotationId: string;
     event: MouseEvent;
 }
 
@@ -280,14 +280,9 @@ const useAnnotationEngine = ({
 
         const handleMouseDown = (event: MouseEvent) =>
             handleEvent((canvas) => {
-                console.info('in handlemouse down')
                 const eventCoords = canvasCoordinateOf(canvas, event);
-                const isClickOnExistingPointsIdx = detectClickOnExistingPoints(
-                    annotationToEditPointsRef.current,
-                    eventCoords,
-                );
-
                 const renderingContext = renderingContextRef.current;
+
                 // FIXME remove the !
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 const annotationLabelWasClicked = (annotation: Annotation, coordinates: Coordinates): boolean => !!renderingContext?.isPointInPath(annotation!.label!.path, coordinates.x, coordinates.y);
@@ -300,12 +295,16 @@ const useAnnotationEngine = ({
                             type: 'mouse_down_on_label_event',
                             at: eventCoords,
                             event,
-                            clickedAnnotation: clickedLabelAnnotation,
+                            clickedAnnotationId: clickedLabelAnnotation.id,
                         },
                         operations,
                     )
                 }
 
+                const isClickOnExistingPointsIdx = detectClickOnExistingPoints(
+                    annotationToEditPointsRef.current,
+                    eventCoords,
+                );
 
                 if (isClickOnExistingPointsIdx.length > 0) {
                     return onEvent(
