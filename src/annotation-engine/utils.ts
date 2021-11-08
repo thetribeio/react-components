@@ -1,6 +1,7 @@
 /* eslint-disable no-param-reassign */
 
-import { Coordinates, Annotation } from './models';
+import { Coordinates, Annotation, SelectionTypes, StyleOptions } from './models';
+import { defaultStyle, unselectedStyle, selectedStyle, temporaryHighlightedStyle, highlightedStyle } from './style/defaultStyleOptions';
 
 export const areCoordinatesInsideCircle = (
     pointCoordinates: Coordinates,
@@ -54,42 +55,63 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
     const distanceY = to.y - from.y;
     const textSize = renderingContext.measureText(label);
     renderingContext.save();
-    renderingContext.textAlign = 'left';
+    const {align, color, fillColor} = defaultStyle.text;
+
+    renderingContext.textAlign = align as CanvasTextAlign;
     // renderingContext.translate(from.x, from.y);
     // renderingContext.rotate(Math.atan2(distanceY, distanceX));
-    renderingContext.fillStyle = '#FFFFFF';
+    renderingContext.fillStyle = fillColor;
     const path = drawRoundRect(renderingContext, { x: from.x - 2, y: from.y -20 }, textSize.width + 10, 20, 10);
-    renderingContext.fillStyle = '#0053CC';
+    renderingContext.fillStyle = color;
     renderingContext.fillText(label, from.x + 2, from.y -5);
     renderingContext.restore();
 
     return path;
 };
 
+
+const getStyle = (type: SelectionTypes): StyleOptions => {
+    let style;
+
+    switch (type) {
+        case 'SELECTED':
+            style = selectedStyle;
+            break;
+    
+        case 'TEMPORARY_HIGHLIGHTED':
+            style = temporaryHighlightedStyle;
+            break;
+    
+        case 'HIGHLIGHTED':
+            style = highlightedStyle;
+            break;
+    
+        case 'UNSELECTED':    
+        default:
+            style = unselectedStyle;
+            break;
+    }
+
+    return style;
+};
+
 export const drawPoint = (
-    type: 'SELECTED' | 'UNSELECTED' | 'HIGHLIGHTED',
+    type: SelectionTypes,
     renderingContext: CanvasRenderingContext2D,
     coordinates: Coordinates,
 ): void => {
     renderingContext.beginPath();
 
-    // stroke and line
-    if (type === 'SELECTED') {
-        renderingContext.strokeStyle = '#FFF';
-        renderingContext.lineWidth = 1;
-    } else if (type === 'HIGHLIGHTED' || type === 'UNSELECTED') {
-        renderingContext.strokeStyle = '#FFFFFF95';
-        renderingContext.lineWidth = 2;
-    }
+    const style = getStyle(type);
 
+    const { strokeColor, width, outerRadius, innerRadius, fillColor } = style.point;
+    // stroke and line
+    renderingContext.strokeStyle = strokeColor;
+    renderingContext.lineWidth = width;
+  
     // arc
-    if (type === 'UNSELECTED') {
-        renderingContext.arc(coordinates.x, coordinates.y, 7, 0, Math.PI * 2, true);
-    } else if (type === 'SELECTED') {
-        renderingContext.arc(coordinates.x, coordinates.y, 8, 0, Math.PI * 2, true);
-    } else if (type === 'HIGHLIGHTED') {
-        renderingContext.arc(coordinates.x, coordinates.y, 14, 0, Math.PI * 2, true);
-    }
+
+    renderingContext.arc(coordinates.x, coordinates.y, outerRadius, 0, Math.PI * 2, true);
 
     renderingContext.stroke();
 
@@ -102,20 +124,10 @@ export const drawPoint = (
     renderingContext.beginPath();
 
     // fill
-    if (type === 'SELECTED' || type === 'HIGHLIGHTED') {
-        renderingContext.fillStyle = '#0053CC66';
-    } else if (type === 'UNSELECTED') {
-        renderingContext.fillStyle = '#0053CC30';
-    }
-
+    renderingContext.fillStyle = fillColor;
+ 
     // arc
-    if (type === 'SELECTED') {
-        renderingContext.arc(coordinates.x, coordinates.y, 8, 0, Math.PI * 2, true);
-    } else if (type === 'UNSELECTED') {
-        renderingContext.arc(coordinates.x, coordinates.y, 5, 0, Math.PI * 2, true);
-    } else if (type === 'HIGHLIGHTED') {
-        renderingContext.arc(coordinates.x, coordinates.y, 12, 0, Math.PI * 2, true);
-    }
+    renderingContext.arc(coordinates.x, coordinates.y, innerRadius, 0, Math.PI * 2, true);
 
     renderingContext.fill();
 

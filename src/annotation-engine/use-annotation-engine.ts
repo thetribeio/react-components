@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject, useImperativeHandle, ForwardedRef } from 'react';
-import { Annotation, Coordinates } from './models';
+import { Annotation, Coordinates, StyleOptions } from './models';
 import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
 
 interface UseAnnotationEngineArgs {
@@ -113,7 +113,7 @@ export interface Operations {
     removeHighlightPoint(): void;
     highlightAnnotation(annotationId: string | undefined): void;
     removeHighlightAnnotation(): void;
-    temporaryHighlightAnnotation(annotationId: string | undefined): void;
+    temporaryHighlightAnnotation(annotationId: string | undefined, styleOptions?: StyleOptions): void;
     removeTemporaryHighlightAnnotation(): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
@@ -133,6 +133,7 @@ const useAnnotationEngine = ({
     const annotationToTemporaryHighlightIdRef = useRef<string | undefined>(undefined);
     const annotationHighlightPointIndexRef = useRef<number | undefined>(undefined);
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
+    const styleOptionsRef = useRef<StyleOptions | undefined>();
 
     const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
         const rect = canvas.getBoundingClientRect();
@@ -235,8 +236,9 @@ const useAnnotationEngine = ({
             removeHighlightAnnotation: () => {
                 annotationToHighlightIdRef.current = undefined;
             },
-            temporaryHighlightAnnotation: (annotationId: string | undefined) => {
+            temporaryHighlightAnnotation: (annotationId: string | undefined, styleOptions?: StyleOptions) => {
                 annotationToTemporaryHighlightIdRef.current = annotationId;
+                styleOptionsRef.current = styleOptions;
             },
             removeTemporaryHighlightAnnotation: () => {
                 annotationToTemporaryHighlightIdRef.current = undefined;
