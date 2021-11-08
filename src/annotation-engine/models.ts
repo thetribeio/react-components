@@ -8,4 +8,8 @@ export type Annotation = {
     name: string;
     isClosed: boolean;
     coordinates: Coordinates[];
+    label?: {
+        name: string,
+        path: Path2D,
+    },
 };

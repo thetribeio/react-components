@@ -21,44 +21,49 @@ export const drawRoundRect = (
     width: number,
     height: number,
     radius: number,
-): void => {
-    renderingContext.beginPath();
-    renderingContext.moveTo(coordinates.x + radius, coordinates.y);
-    renderingContext.lineTo(coordinates.x + width - radius, coordinates.y);
-    renderingContext.quadraticCurveTo(
+): Path2D => {
+    const path = new Path2D();
+    path.moveTo(coordinates.x + radius, coordinates.y);
+    path.lineTo(coordinates.x + width - radius, coordinates.y);
+    path.quadraticCurveTo(
         coordinates.x + width,
         coordinates.y,
         coordinates.x + width,
         coordinates.y + radius,
     );
-    renderingContext.lineTo(coordinates.x + width, coordinates.y + height);
-    renderingContext.quadraticCurveTo(
+    path.lineTo(coordinates.x + width, coordinates.y + height);
+    path.quadraticCurveTo(
         coordinates.x + width,
         coordinates.y + height,
         coordinates.x + width,
         coordinates.y + height,
     );
-    renderingContext.lineTo(coordinates.x, coordinates.y + height);
-    renderingContext.quadraticCurveTo(coordinates.x, coordinates.y + height, coordinates.x, coordinates.y + height);
-    renderingContext.lineTo(coordinates.x, coordinates.y + radius);
-    renderingContext.quadraticCurveTo(coordinates.x, coordinates.y, coordinates.x + radius, coordinates.y);
-    renderingContext.fill();
-    renderingContext.closePath();
+    path.lineTo(coordinates.x, coordinates.y + height);
+    path.quadraticCurveTo(coordinates.x, coordinates.y + height, coordinates.x, coordinates.y + height);
+    path.lineTo(coordinates.x, coordinates.y + radius);
+    path.quadraticCurveTo(coordinates.x, coordinates.y, coordinates.x + radius, coordinates.y);
+    renderingContext.fill(path);
+
+    return path;
 };
 
-const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, to: Coordinates) => {
+const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, to: Coordinates): Path2D => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const distanceX = to.x - from.x;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const distanceY = to.y - from.y;
     const textSize = renderingContext.measureText(label);
     renderingContext.save();
     renderingContext.textAlign = 'left';
-    renderingContext.translate(from.x, from.y);
-    renderingContext.rotate(Math.atan2(distanceY, distanceX));
+    // renderingContext.translate(from.x, from.y);
+    // renderingContext.rotate(Math.atan2(distanceY, distanceX));
     renderingContext.fillStyle = '#FFFFFF';
-    drawRoundRect(renderingContext, { x: -2, y: -20 }, textSize.width + 10, 20, 10);
+    const path = drawRoundRect(renderingContext, { x: from.x - 2, y: from.y -20 }, textSize.width + 10, 20, 10);
     renderingContext.fillStyle = '#0053CC';
-    renderingContext.fillText(label, 2, -5);
+    renderingContext.fillText(label, from.x + 2, from.y -5);
     renderingContext.restore();
+
+    return path;
 };
 
 export const drawPoint = (
@@ -175,12 +180,20 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
                 y: middlePoint.y - 10,
             };
             drawPoint('UNSELECTED', renderingContext, middlePoint);
-            drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
+            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
+            annotation.label = {
+                name: annotation.name,
+                path,
+            };
         }
         if (annotation.coordinates.length >= 2) {
             const firstPoint = annotation.coordinates[0];
             const secondPoint = annotation.coordinates[1];
-            drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
+            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
+            annotation.label = {
+            name: annotation.name,
+            path,
+        };
         }
     });
 };
