@@ -6,5 +6,6 @@ export type Coordinates = {
 export type Annotation = {
     id: string;
     name: string;
+    isClosed: boolean;
     coordinates: Coordinates[];
 };
