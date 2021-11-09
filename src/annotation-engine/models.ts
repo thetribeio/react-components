@@ -25,28 +25,13 @@ export type StyleOptions = {
         fillColor: string;
     };
     line: {
-        cap: string,
+        cap: CanvasLineCap,
         strokeColor: string,
         width: number,
     };
     text: {
         color: string;
-        align: string;
+        align: CanvasTextAlign;
         fillColor: string;
     };
-    // fill?: {
-	// 	color?: string;
-	// 	opacity?: number;
-	// };
-	// stroke?: {
-	// 	color?: string;
-	// 	width?: number;
-	// };
-    // shadow?: { 
-    // 	offsetX?: number;
-    // 	offsetY?: number;
-    // 	blurRadius?: number;
-    // 	spreadRadius?: number;
-    // 	color?: number;
-    // };
 }

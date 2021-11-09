@@ -251,13 +251,13 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         if (isModeInactif()) {
             switch (event.type) {
                 case 'mouse_down_on_label_event':
-                    operations.highlightAnnotation(event.clickedAnnotationId)
+                    operations.highlightAnnotation(event.annotationId)
                     break;
                 case 'mouse_down_event':
                     operations.removeHighlightAnnotation();
                     break;
                 case 'mouse_move_on_label_event':
-                    operations.temporaryHighlightAnnotation(event.hoveredAnnotationId);
+                    operations.temporaryHighlightAnnotation(event.annotationId);
                     break;
                 case 'mouse_move_event':
                     operations.removeTemporaryHighlightAnnotation();

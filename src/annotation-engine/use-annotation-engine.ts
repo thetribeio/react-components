@@ -47,14 +47,14 @@ export interface MouseDownOnExistingPointEvent {
 export interface MouseDownOnLabelEvent {
     type: 'mouse_down_on_label_event';
     at: Coordinates;
-    clickedAnnotationId: string;
+    annotationId: string;
     event: MouseEvent;
 }
 
 export interface MouseMoveOnLabelEvent {
     type: 'mouse_move_on_label_event';
     at: Coordinates;
-    hoveredAnnotationId: string;
+    annotationId: string;
     event: MouseEvent;
 }
 
@@ -316,8 +316,7 @@ const useAnnotationEngine = ({
                             type: 'mouse_down_on_label_event',
                             at: eventCoords,
                             event,
-                            // FIXME Laurent : remove "click" notion
-                            clickedAnnotationId: clickedLabelAnnotation.id,
+                            annotationId: clickedLabelAnnotation.id,
                         },
                         operations,
                     )
@@ -362,17 +361,16 @@ const useAnnotationEngine = ({
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 const annotationLabelWasSelected = (annotation: Annotation, coordinates: Coordinates): boolean => !!renderingContext?.isPointInPath(annotation!.label!.path, coordinates.x, coordinates.y);
 
-                // FIXME Laurent : remove "hovered" notion
                 // FIXME Laurent : refacto this
-                const hoveredLabelAnnotation = annotations.find((annotation) => annotationLabelWasSelected(annotation, eventCoords));
+                const selectedLabelAnnotation = annotations.find((annotation) => annotationLabelWasSelected(annotation, eventCoords));
 
-                if (hoveredLabelAnnotation) {
+                if (selectedLabelAnnotation) {
                     return onEvent(
                         {
                             type: 'mouse_move_on_label_event',
                             at: eventCoords,
                             event,
-                            hoveredAnnotationId: hoveredLabelAnnotation.id,
+                            annotationId: selectedLabelAnnotation.id,
                         },
                         operations,
                     )

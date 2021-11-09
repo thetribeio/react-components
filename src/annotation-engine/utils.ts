@@ -139,7 +139,7 @@ export const drawPoint = (
 };
 
 export const drawLine = (
-    type: 'SELECTED' | 'UNSELECTED',
+    type: SelectionTypes,
     renderingContext: CanvasRenderingContext2D,
     startCoordinates: Coordinates,
     endCoordinates: Coordinates,
@@ -166,15 +166,32 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
 
-        const selectStyle = (annotation.id === annotationToHighlightId || annotation.id === annotationToTemporaryHighlightId) ? 'SELECTED' : 'UNSELECTED';
+        let selectionType: SelectionTypes = 'UNSELECTED';
+
+        switch (annotation.id) {
+            case annotationToHighlightId:
+                selectionType = 'SELECTED';
+                
+                break;
+        
+            case annotationToTemporaryHighlightId:
+                selectionType = 'TEMPORARY_HIGHLIGHTED';
+                
+                break;
+        
+            default:
+                selectionType = 'UNSELECTED';
+                break;
+        }
+
         annotation.coordinates.forEach((coordinates: Coordinates, index: number) => {
             if (previousCoordinates) {
                 if (annotation.isClosed === false) {
                     if (index > 0) {
-                        drawLine(selectStyle, renderingContext, previousCoordinates, coordinates);
+                        drawLine(selectionType, renderingContext, previousCoordinates, coordinates);
                     }
                 } else {
-                    drawLine(selectStyle, renderingContext, previousCoordinates, coordinates);
+                    drawLine(selectionType, renderingContext, previousCoordinates, coordinates);
                 }
             }
 
@@ -192,7 +209,7 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
                 x: middlePoint.x + textSize.width / 2,
                 y: middlePoint.y - 10,
             };
-            drawPoint(selectStyle, renderingContext, middlePoint);
+            drawPoint(selectionType, renderingContext, middlePoint);
             const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
             annotation.label = {
                 name: annotation.name,

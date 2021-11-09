@@ -4,13 +4,13 @@ import { StyleOptions } from "../models";
 
 export const defaultStyle = {
   text: {
-    align: 'left',
+    align: 'left' as CanvasTextAlign,
     color: '#0053CC',
     fillColor: '#FFFFFF'
   },
   line: {
     width: 2,
-    cap: 'round',
+    cap: 'round' as CanvasLineCap,
     strokeColor: '#FFFFFF',
   }
 }
@@ -47,6 +47,10 @@ export const temporaryHighlightedStyle: StyleOptions = {
     ...defaultStyle.line,
     strokeColor: 'red',
   },
+  point: {
+    ...selectedStyle.point,
+    fillColor: 'red',
+  }
 };
 
 export const highlightedStyle: StyleOptions = {
