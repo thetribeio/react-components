@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject, useImperativeHandle, ForwardedRef } from 'react';
-import { Annotation, Coordinates, InputStylingStatusData, PartialStyleOptions, StylingStatusData } from './models';
+import { Annotation, Coordinates, InputStyleOptions, StyleOptions } from './models';
 import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
 
 interface UseAnnotationEngineArgs {
@@ -111,9 +111,7 @@ export interface Operations {
     addPoint(at: Coordinates): PointId;
     highlightExistingPoint(pointId: PointId): void;
     removeHighlightPoint(): void;
-    // highlightAnnotation(annotationId: string | undefined): void;
-    // removeHighlightAnnotation(): void;
-    setStyleToAnnotation(annotationId: string, stylingData: InputStylingStatusData): void;
+    setStyleToAnnotation(annotationId: string, stylingData: InputStyleOptions): void;
     removeStylesFromAnnotations(styleNames: string[]): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
@@ -129,14 +127,9 @@ const useAnnotationEngine = ({
 }: UseAnnotationEngineArgs): void => {
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
-    // const annotationToHighlightIdRef = useRef<string | undefined>(undefined);
-    // const annotationToTemporaryHighlightIdRef = useRef<string | undefined>(undefined);
     const annotationHighlightPointIndexRef = useRef<number | undefined>(undefined);
-    // const styledAnnotations = useRef<Map<string, PartialStyleOptions>>(new Map());
-    
-    const styledAnnotationsByStatus = useRef<Map<string, StylingStatusData>>(new Map()) 
+    const styledAnnotations = useRef<Map<string, StyleOptions>>(new Map());
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
-    // const styleOptionsRef = useRef<StyleOptions | undefined>();
 
     const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
         const rect = canvas.getBoundingClientRect();
@@ -166,7 +159,6 @@ const useAnnotationEngine = ({
     };
 
     useEffect(() => {
-        // annotationToHighlightIdRef.current = undefined;
         if (annotationToEdit) {
             annotationToEditPointsRef.current = annotationToEdit.coordinates;
         } else {
@@ -200,7 +192,7 @@ const useAnnotationEngine = ({
 
         renderingContextRef.current.clearRect(0, 0, currentCanvasRef.width, currentCanvasRef.height);
 
-        drawAnnotations(renderingContextRef.current, annotationsToDraw, styledAnnotationsByStatus.current);
+        drawAnnotations(renderingContextRef.current, annotationsToDraw, styledAnnotations.current);
 
         drawCurrentAnnotation(
             renderingContextRef.current,
@@ -233,30 +225,17 @@ const useAnnotationEngine = ({
             removeHighlightPoint: () => {
                 annotationHighlightPointIndexRef.current = undefined;
             },
-            // highlightAnnotation: (annotationId: string | undefined) => {
-            //     annotationToHighlightIdRef.current = annotationId;
-            // },
-            // removeHighlightAnnotation: () => {
-            //     annotationToHighlightIdRef.current = undefined;
-            // },
-            // temporaryHighlightAnnotation: (annotationId: string | undefined, styleOptions?: StyleOptions) => {
-            //     annotationToTemporaryHighlightIdRef.current = annotationId;
-            //     styleOptionsRef.current = styleOptions;
-            // },
-            // removeTemporaryHighlightAnnotation: () => {
-            //     annotationToTemporaryHighlightIdRef.current = undefined;
-            // },
-            setStyleToAnnotation: (annotationId: string, stylingStatus: InputStylingStatusData) => {
-                const { name, priority, styleOptions } = stylingStatus;
-                styledAnnotationsByStatus.current.set(name, {
+            setStyleToAnnotation: (annotationId: string, stylingStatus: InputStyleOptions) => {
+                const { name, priority, style } = stylingStatus;
+                styledAnnotations.current.set(name, {
                     annotationsId: [annotationId],
                     priority,
-                    styleOptions,
+                    style,
                 });
-                console.info(styledAnnotationsByStatus.current);
+                console.info(styledAnnotations.current);
             },
             removeStylesFromAnnotations: (styleNames: string[]): void => {
-                styleNames.forEach((styleName) => styledAnnotationsByStatus.current.delete(styleName));
+                styleNames.forEach((styleName) => styledAnnotations.current.delete(styleName));
             },
             movePoint: (pointId: PointId, to: Coordinates) => {
                 annotationToEditPointsRef.current[pointId] = to;

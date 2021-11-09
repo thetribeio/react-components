@@ -16,7 +16,7 @@ export type Annotation = {
 
 export type SelectionTypes = 'UNSELECTED' | 'SELECTED' | 'HIGHLIGHTED';
 
-export type StyleOptions = {
+export type AnnotationStyle = {
     point: {
         innerRadius: number;
         outerRadius: number;
@@ -48,16 +48,16 @@ type RecursivePartial<T> = {
       T[P];
   };
 
-  export type PartialStyleOptions = RecursivePartial<StyleOptions>;
+  export type PartialAnnotationStyle = RecursivePartial<AnnotationStyle>;
 
-  export interface StylingStatusData {
+  export interface StyleOptions {
     priority: number;
     annotationsId: string[];
-    styleOptions: PartialStyleOptions;
+    style: PartialAnnotationStyle;
   }
 
-  export interface InputStylingStatusData {
+  export interface InputStyleOptions {
     priority: number;
-    styleOptions: PartialStyleOptions;
+    style: PartialAnnotationStyle;
     name: string;
   }

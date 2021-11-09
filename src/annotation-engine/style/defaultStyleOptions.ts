@@ -1,6 +1,6 @@
-import { StyleOptions } from "../models";
+import { AnnotationStyle } from "../models";
 
-export const defaultStyle: StyleOptions = {
+export const defaultStyle: AnnotationStyle = {
   label: {
     textAlign: 'left' as CanvasTextAlign,
     textColor: '#0053CC',
@@ -26,7 +26,7 @@ export const defaultStyle: StyleOptions = {
   },
 }
 
-export const selectedStyle: StyleOptions = {
+export const selectedStyle: AnnotationStyle = {
   ...defaultStyle,
   point: {
     strokeColor: '#FFFFFF',
@@ -42,7 +42,7 @@ export const selectedStyle: StyleOptions = {
 };
 
 
-export const highlightedStyle: StyleOptions = {
+export const highlightedStyle: AnnotationStyle = {
   ...defaultStyle,
   point: {
     strokeColor: '#FFFFFF95',

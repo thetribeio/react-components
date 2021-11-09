@@ -1,6 +1,6 @@
 /* eslint-disable no-param-reassign */
 
-import { Coordinates, Annotation, SelectionTypes, StyleOptions, PartialStyleOptions, StylingStatusData } from './models';
+import { Coordinates, Annotation, SelectionTypes, AnnotationStyle, PartialAnnotationStyle, StyleOptions } from './models';
 import { defaultStyle, highlightedStyle, selectedStyle } from './style/defaultStyleOptions';
 
 export const areCoordinatesInsideCircle = (
@@ -48,7 +48,7 @@ export const drawRoundRect = (
     return path;
 };
 
-const overloadStyle = (style: StyleOptions, customStyle?: PartialStyleOptions): StyleOptions => {
+const overloadStyle = (style: AnnotationStyle, customStyle?: PartialAnnotationStyle): AnnotationStyle => {
     if(!customStyle) {
         return style;
     }
@@ -73,10 +73,10 @@ const overloadStyle = (style: StyleOptions, customStyle?: PartialStyleOptions): 
         return output;
     }
 
-    return mergeDeep(style, customStyle) as StyleOptions;
+    return mergeDeep(style, customStyle) as AnnotationStyle;
 }
 
-const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, to: Coordinates, customStyle?: PartialStyleOptions): Path2D => {
+const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, to: Coordinates, customStyle?: PartialAnnotationStyle): Path2D => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const distanceX = to.x - from.x;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -105,15 +105,15 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
     return path;
 };
 
-const getStyle = (annotationId: string, stylingStatuses?: Map<string, StylingStatusData>): StyleOptions => {
+const getStyle = (annotationId: string, styledAnnotations?: Map<string, StyleOptions>): AnnotationStyle => {
 
     
-    const stylingStatusDatas = [] as StylingStatusData[];
+    const stylingStatusDatas = [] as StyleOptions[];
     
-    if (!stylingStatuses) {
+    if (!styledAnnotations) {
         return defaultStyle;
     }
-    stylingStatuses.forEach((stylingStatus) => {
+    styledAnnotations.forEach((stylingStatus) => {
         if (stylingStatus.annotationsId.includes(annotationId)) {
             stylingStatusDatas.push(stylingStatus)
         }
@@ -122,9 +122,9 @@ const getStyle = (annotationId: string, stylingStatuses?: Map<string, StylingSta
         return defaultStyle;
     }
 
-    const priorityStyle = stylingStatusDatas.sort((style1, style2) => style1.priority - style2.priority)[stylingStatusDatas.length - 1].styleOptions;
+    const { style } = stylingStatusDatas.sort((style1, style2) => style1.priority - style2.priority)[stylingStatusDatas.length - 1];
 
-    return overloadStyle(defaultStyle, priorityStyle);
+    return overloadStyle(defaultStyle, style);
 
 }
 
@@ -132,7 +132,7 @@ export const drawPoint = (
     type: SelectionTypes,
     renderingContext: CanvasRenderingContext2D,
     coordinates: Coordinates,
-    style: StyleOptions = defaultStyle,
+    style: AnnotationStyle = defaultStyle,
 ): void => {
     renderingContext.beginPath();
 
@@ -193,12 +193,12 @@ export const drawLine = (
     renderingContext.closePath();
 };
 
-export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], styledAnnotations: Map<string, StylingStatusData>): void => {
+export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], styledAnnotations: Map<string, StyleOptions>): void => {
     annotations.forEach((annotation) => {
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
 
-        const customStyle = getStyle(annotation.id, styledAnnotations);
+        const style = getStyle(annotation.id, styledAnnotations);
 
         annotation.coordinates.forEach((coordinates: Coordinates, index: number) => {
             if (previousCoordinates) {
@@ -225,8 +225,8 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
                 x: middlePoint.x + textSize.width / 2,
                 y: middlePoint.y - 10,
             };
-            drawPoint('UNSELECTED', renderingContext, middlePoint, customStyle);
-            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, customStyle);
+            drawPoint('UNSELECTED', renderingContext, middlePoint, style);
+            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, style);
             annotation.label = {
                 name: annotation.name,
                 path,
@@ -235,7 +235,7 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
         if (annotation.coordinates.length >= 2) {
             const firstPoint = annotation.coordinates[0];
             const secondPoint = annotation.coordinates[1];
-            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, customStyle);
+            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, style);
             annotation.label = {
                 name: annotation.name,
                 path,

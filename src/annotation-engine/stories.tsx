@@ -3,7 +3,8 @@ import { Story, Meta } from '@storybook/react';
 import React, { useEffect, useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
 import Button from '../button';
-import { Annotation, Coordinates, InputStylingStatusData, PartialStyleOptions, StylingStatusData } from './models';
+import { Annotation, Coordinates } from './models';
+import { clickStatus, hoverStatus } from './style/stories';
 import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent } from './use-annotation-engine';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
 
@@ -246,36 +247,11 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
     const mouseDownEvent = (event: MouseDownEvent | MouseDownOnExistingPointEvent, operations: Operations) => {
         createNewPoint(event.at, event.currentGeometry, operations);
     }
-    const hoverStyle: PartialStyleOptions = {
-        label: {
-            shadow: {
-                blur: 5,
-                color: 'darkblue',
-            },
-        },
-    };
-    const clickStyle: PartialStyleOptions = {
-        label: {
-            fillColor: 'red', 
-        },
-    };
-
-    const hoverStatus: InputStylingStatusData = {
-        priority: 0,
-        styleOptions: hoverStyle,
-        name: 'hover',
-    };
-
-    const clickStatus: InputStylingStatusData = {
-        priority: 1,
-        styleOptions: clickStyle,
-        name: 'click',
-    };
+    
     const handleEvent = (event: Events, operations: Operations): void => {
         if (isModeInactif()) {
             switch (event.type) {
                 case 'mouse_down_on_label_event':
-                    // operations.setStyleToAnnotation(event.annotationId, selectStyle)
                     operations.setStyleToAnnotation(event.annotationId, clickStatus)
                     break;
                 case 'mouse_down_event':
