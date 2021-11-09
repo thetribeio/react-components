@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
 
-import { Coordinates, Annotation, SelectionTypes, StyleOptions, PartialStyleOptions } from './models';
-import { unselectedStyle, selectedStyle, temporaryHighlightedStyle, highlightedStyle } from './style/defaultStyleOptions';
+import { Coordinates, Annotation, SelectionTypes, StyleOptions, PartialStyleOptions, StylingStatusData } from './models';
+import { defaultStyle } from './style/defaultStyleOptions';
 
 export const areCoordinatesInsideCircle = (
     pointCoordinates: Coordinates,
@@ -83,7 +83,7 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
     const distanceY = to.y - from.y;
     const textSize = renderingContext.measureText(label);
     renderingContext.save();
-    const style = overloadStyle(unselectedStyle, customStyle);
+    const style = overloadStyle(defaultStyle, customStyle);
     const {align, color, fillColor} = style.text;
 
     renderingContext.textAlign = align as CanvasTextAlign;
@@ -99,39 +99,57 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
 };
 
 
-const getStyle = (type: SelectionTypes): StyleOptions => {
-    let style;
+// const getStyle = (type: SelectionTypes): StyleOptions => {
+//     let style;
 
-    switch (type) {
-        case 'SELECTED':
-            style = selectedStyle;
-            break;
+//     switch (type) {
+//         case 'SELECTED':
+//             style = selectedStyle;
+//             break;
     
-        case 'TEMPORARY_HIGHLIGHTED':
-            style = temporaryHighlightedStyle;
-            break;
+//         case 'HIGHLIGHTED':
+//             style = highlightedStyle;
+//             break;
     
-        case 'HIGHLIGHTED':
-            style = highlightedStyle;
-            break;
+//         case 'UNSELECTED':    
+//         default:
+//             style = defaultStyle;
+//             break;
+//     }
+
+//     return style;
+// };
+
+const getStyle = (annotationId: string, stylingStatuses?: Map<string, StylingStatusData>): StyleOptions => {
+
     
-        case 'UNSELECTED':    
-        default:
-            style = unselectedStyle;
-            break;
+    const stylingStatusDatas = [] as StylingStatusData[];
+    
+    if (!stylingStatuses) {
+        return defaultStyle;
+    }
+    stylingStatuses.forEach((stylingStatus) => {
+        if (stylingStatus.annotationsId.includes(annotationId)) {
+            stylingStatusDatas.push(stylingStatus)
+        }
+    })
+    if (!stylingStatusDatas.length) {
+        return defaultStyle;
     }
 
-    return style;
-};
+    const priorityStyle = stylingStatusDatas.sort((style1, style2) => style1.priority - style2.priority)[stylingStatusDatas.length - 1].styleOptions;
+
+    return overloadStyle(defaultStyle, priorityStyle);
+
+}
 
 export const drawPoint = (
     type: SelectionTypes,
     renderingContext: CanvasRenderingContext2D,
     coordinates: Coordinates,
+    style: StyleOptions,
 ): void => {
     renderingContext.beginPath();
-
-    const style = getStyle(type);
 
     const { strokeColor, width, outerRadius, innerRadius, fillColor } = style.point;
     // stroke and line
@@ -190,30 +208,30 @@ export const drawLine = (
     renderingContext.closePath();
 };
 
-export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], annotationToHighlightId: string | undefined, annotationToTemporaryHighlightId: string | undefined, annotationStyles: Map<string, PartialStyleOptions>): void => {
+export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], styledAnnotations: Map<string, StylingStatusData>): void => {
     annotations.forEach((annotation) => {
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
 
-        let selectionType: SelectionTypes = 'UNSELECTED';
+        const selectionType: SelectionTypes = 'UNSELECTED';
 
-        const customStyle = annotationStyles.get(annotation.id);
+        const customStyle = getStyle(annotation.id, styledAnnotations);
 
-        switch (annotation.id) {
-            case annotationToHighlightId:
-                selectionType = 'SELECTED';
+        // switch (annotation.id) {
+        //     case annotationToHighlightId:
+        //         selectionType = 'SELECTED';
                 
-                break;
+        //         break;
         
-            case annotationToTemporaryHighlightId:
-                selectionType = 'TEMPORARY_HIGHLIGHTED';
+        //     case annotationToTemporaryHighlightId:
+        //         selectionType = 'TEMPORARY_HIGHLIGHTED';
                 
-                break;
+        //         break;
         
-            default:
-                selectionType = 'UNSELECTED';
-                break;
-        }
+        //     default:
+        //         selectionType = 'UNSELECTED';
+        //         break;
+        // }
 
         annotation.coordinates.forEach((coordinates: Coordinates, index: number) => {
             if (previousCoordinates) {
@@ -240,7 +258,7 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
                 x: middlePoint.x + textSize.width / 2,
                 y: middlePoint.y - 10,
             };
-            drawPoint(selectionType, renderingContext, middlePoint);
+            drawPoint(selectionType, renderingContext, middlePoint, customStyle);
             const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, customStyle);
             annotation.label = {
                 name: annotation.name,
@@ -268,9 +286,9 @@ export const drawCurrentAnnotation = (
 ): void => {
     annotationPoints.forEach((annotationPoint: Coordinates, index: number) => {
         if (index === annotationHighlightPointIndex) {
-            drawPoint('HIGHLIGHTED', renderingContext, annotationPoint);
+            // drawPoint('HIGHLIGHTED', renderingContext, annotationPoint);
         } else {
-            drawPoint('SELECTED', renderingContext, annotationPoint);
+            // drawPoint('SELECTED', renderingContext, annotationPoint);
         }
     });
 

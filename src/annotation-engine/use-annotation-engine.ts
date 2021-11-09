@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject, useImperativeHandle, ForwardedRef } from 'react';
-import { Annotation, Coordinates, PartialStyleOptions, StyleOptions } from './models';
+import { Annotation, Coordinates, InputStylingStatusData, PartialStyleOptions, StylingStatusData } from './models';
 import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
 
 interface UseAnnotationEngineArgs {
@@ -111,12 +111,10 @@ export interface Operations {
     addPoint(at: Coordinates): PointId;
     highlightExistingPoint(pointId: PointId): void;
     removeHighlightPoint(): void;
-    highlightAnnotation(annotationId: string | undefined): void;
-    removeHighlightAnnotation(): void;
-    temporaryHighlightAnnotation(annotationId: string | undefined, styleOptions?: StyleOptions): void;
-    removeTemporaryHighlightAnnotation(): void;
-    setStyleToAnnotation(annotationId: string, style?: PartialStyleOptions): void;
-    removeStyleFromAnnotations(): void;
+    // highlightAnnotation(annotationId: string | undefined): void;
+    // removeHighlightAnnotation(): void;
+    setStyleToAnnotation(annotationId: string, stylingData: InputStylingStatusData): void;
+    removeStylesFromAnnotations(styleNames: string[]): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
     drawOnCanvas(draw: (context2d: CanvasRenderingContext2D) => void): void;
@@ -131,13 +129,14 @@ const useAnnotationEngine = ({
 }: UseAnnotationEngineArgs): void => {
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
-    const annotationToHighlightIdRef = useRef<string | undefined>(undefined);
-    const annotationToTemporaryHighlightIdRef = useRef<string | undefined>(undefined);
+    // const annotationToHighlightIdRef = useRef<string | undefined>(undefined);
+    // const annotationToTemporaryHighlightIdRef = useRef<string | undefined>(undefined);
     const annotationHighlightPointIndexRef = useRef<number | undefined>(undefined);
-    // FIXME unknown type
-    const annotationStyles = useRef<Map<string, PartialStyleOptions>>(new Map());
+    // const styledAnnotations = useRef<Map<string, PartialStyleOptions>>(new Map());
+    
+    const styledAnnotationsByStatus = useRef<Map<string, StylingStatusData>>(new Map()) 
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
-    const styleOptionsRef = useRef<StyleOptions | undefined>();
+    // const styleOptionsRef = useRef<StyleOptions | undefined>();
 
     const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
         const rect = canvas.getBoundingClientRect();
@@ -167,7 +166,7 @@ const useAnnotationEngine = ({
     };
 
     useEffect(() => {
-        annotationToHighlightIdRef.current = undefined;
+        // annotationToHighlightIdRef.current = undefined;
         if (annotationToEdit) {
             annotationToEditPointsRef.current = annotationToEdit.coordinates;
         } else {
@@ -201,7 +200,7 @@ const useAnnotationEngine = ({
 
         renderingContextRef.current.clearRect(0, 0, currentCanvasRef.width, currentCanvasRef.height);
 
-        drawAnnotations(renderingContextRef.current, annotationsToDraw, annotationToHighlightIdRef.current, annotationToTemporaryHighlightIdRef.current, annotationStyles.current);
+        drawAnnotations(renderingContextRef.current, annotationsToDraw, styledAnnotationsByStatus.current);
 
         drawCurrentAnnotation(
             renderingContextRef.current,
@@ -234,25 +233,30 @@ const useAnnotationEngine = ({
             removeHighlightPoint: () => {
                 annotationHighlightPointIndexRef.current = undefined;
             },
-            highlightAnnotation: (annotationId: string | undefined) => {
-                annotationToHighlightIdRef.current = annotationId;
+            // highlightAnnotation: (annotationId: string | undefined) => {
+            //     annotationToHighlightIdRef.current = annotationId;
+            // },
+            // removeHighlightAnnotation: () => {
+            //     annotationToHighlightIdRef.current = undefined;
+            // },
+            // temporaryHighlightAnnotation: (annotationId: string | undefined, styleOptions?: StyleOptions) => {
+            //     annotationToTemporaryHighlightIdRef.current = annotationId;
+            //     styleOptionsRef.current = styleOptions;
+            // },
+            // removeTemporaryHighlightAnnotation: () => {
+            //     annotationToTemporaryHighlightIdRef.current = undefined;
+            // },
+            setStyleToAnnotation: (annotationId: string, stylingStatus: InputStylingStatusData) => {
+                const { name, priority, styleOptions } = stylingStatus;
+                styledAnnotationsByStatus.current.set(name, {
+                    annotationsId: [annotationId],
+                    priority,
+                    styleOptions,
+                });
+                console.info(styledAnnotationsByStatus.current);
             },
-            removeHighlightAnnotation: () => {
-                annotationToHighlightIdRef.current = undefined;
-            },
-            temporaryHighlightAnnotation: (annotationId: string | undefined, styleOptions?: StyleOptions) => {
-                annotationToTemporaryHighlightIdRef.current = annotationId;
-                styleOptionsRef.current = styleOptions;
-            },
-            removeTemporaryHighlightAnnotation: () => {
-                annotationToTemporaryHighlightIdRef.current = undefined;
-            },
-            setStyleToAnnotation: (annotationId: string, style: PartialStyleOptions = {}) => {
-                annotationStyles.current.set(annotationId, style);
-                console.info(annotationStyles.current);
-            },
-            removeStyleFromAnnotations: (): void => {
-                annotationStyles.current.clear();
+            removeStylesFromAnnotations: (styleNames: string[]): void => {
+                styleNames.forEach((styleName) => styledAnnotationsByStatus.current.delete(styleName));
             },
             movePoint: (pointId: PointId, to: Coordinates) => {
                 annotationToEditPointsRef.current[pointId] = to;

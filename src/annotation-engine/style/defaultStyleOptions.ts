@@ -12,11 +12,7 @@ export const defaultStyle = {
     width: 2,
     cap: 'round' as CanvasLineCap,
     strokeColor: '#FFFFFF',
-  }
-}
-
-export const unselectedStyle: StyleOptions = {
-  ...defaultStyle,
+  },
   point: {
     width: 2,
     outerRadius: 7,
@@ -24,13 +20,13 @@ export const unselectedStyle: StyleOptions = {
     strokeColor: '#FFFFFF95',
     fillColor: '#0053CC30'
   },
-};
+}
 
 export const selectedStyle: StyleOptions = {
   ...defaultStyle,
   point: {
     strokeColor: '#FFFFFF',
-    fillColor: '#F0F',
+    fillColor: '#0053CC66',
     outerRadius: 8,
     innerRadius: 8,
     width: 1,
@@ -41,17 +37,6 @@ export const selectedStyle: StyleOptions = {
   }
 };
 
-export const temporaryHighlightedStyle: StyleOptions = {
-  ...selectedStyle,
-  line: {
-    ...defaultStyle.line,
-    strokeColor: 'red',
-  },
-  point: {
-    ...selectedStyle.point,
-    fillColor: 'red',
-  }
-};
 
 export const highlightedStyle: StyleOptions = {
   ...defaultStyle,
