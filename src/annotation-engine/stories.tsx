@@ -3,7 +3,7 @@ import { Story, Meta } from '@storybook/react';
 import React, { useEffect, useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
 import Button from '../button';
-import { Annotation, Coordinates } from './models';
+import { Annotation, Coordinates, PartialStyleOptions } from './models';
 import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent } from './use-annotation-engine';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
 
@@ -246,21 +246,27 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
     const mouseDownEvent = (event: MouseDownEvent | MouseDownOnExistingPointEvent, operations: Operations) => {
         createNewPoint(event.at, event.currentGeometry, operations);
     }
-
+    const style: PartialStyleOptions = {
+        text: {
+            fillColor: 'green',
+        },
+    };
     const handleEvent = (event: Events, operations: Operations): void => {
         if (isModeInactif()) {
             switch (event.type) {
                 case 'mouse_down_on_label_event':
                     operations.highlightAnnotation(event.annotationId)
                     break;
-                case 'mouse_down_event':
-                    operations.removeHighlightAnnotation();
-                    break;
-                case 'mouse_move_on_label_event':
-                    operations.temporaryHighlightAnnotation(event.annotationId);
-                    break;
-                case 'mouse_move_event':
-                    operations.removeTemporaryHighlightAnnotation();
+                    case 'mouse_down_event':
+                        operations.removeHighlightAnnotation();
+                        break;
+                        case 'mouse_move_on_label_event':
+                            operations.temporaryHighlightAnnotation(event.annotationId);
+                            operations.setStyleToAnnotation(event.annotationId, style)
+                            break;
+                            case 'mouse_move_event':
+                                operations.removeTemporaryHighlightAnnotation();
+                                operations.removeStyleFromAnnotations();
                     break;
                 default:
                     break;

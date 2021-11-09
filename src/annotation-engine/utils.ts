@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
 
-import { Coordinates, Annotation, SelectionTypes, StyleOptions } from './models';
-import { defaultStyle, unselectedStyle, selectedStyle, temporaryHighlightedStyle, highlightedStyle } from './style/defaultStyleOptions';
+import { Coordinates, Annotation, SelectionTypes, StyleOptions, PartialStyleOptions } from './models';
+import { unselectedStyle, selectedStyle, temporaryHighlightedStyle, highlightedStyle } from './style/defaultStyleOptions';
 
 export const areCoordinatesInsideCircle = (
     pointCoordinates: Coordinates,
@@ -48,14 +48,43 @@ export const drawRoundRect = (
     return path;
 };
 
-const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, to: Coordinates): Path2D => {
+const overloadStyle = (style: StyleOptions, customStyle?: PartialStyleOptions): StyleOptions => {
+    if(!customStyle) {
+        return style;
+    }
+
+    const isObject = (item: any) => (item && typeof item === 'object' && !Array.isArray(item))
+
+    const mergeDeep = (target: any, source: any) => {
+        const output = {...target};
+        if (isObject(target) && isObject(source)) {
+        Object.keys(source).forEach(key => {
+            if (isObject(source[key])) {
+            if (!(key in target))
+                Object.assign(output, { [key]: source[key] });
+            else
+                output[key] = mergeDeep(target[key], source[key]);
+                } else {
+                Object.assign(output, { [key]: source[key] });
+                }
+            });
+        }
+        
+        return output;
+    }
+
+    return mergeDeep(style, customStyle) as StyleOptions;
+}
+
+const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, to: Coordinates, customStyle?: PartialStyleOptions): Path2D => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const distanceX = to.x - from.x;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const distanceY = to.y - from.y;
     const textSize = renderingContext.measureText(label);
     renderingContext.save();
-    const {align, color, fillColor} = defaultStyle.text;
+    const style = overloadStyle(unselectedStyle, customStyle);
+    const {align, color, fillColor} = style.text;
 
     renderingContext.textAlign = align as CanvasTextAlign;
     // renderingContext.translate(from.x, from.y);
@@ -161,12 +190,14 @@ export const drawLine = (
     renderingContext.closePath();
 };
 
-export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], annotationToHighlightId: string | undefined, annotationToTemporaryHighlightId: string | undefined): void => {
+export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], annotationToHighlightId: string | undefined, annotationToTemporaryHighlightId: string | undefined, annotationStyles: Map<string, PartialStyleOptions>): void => {
     annotations.forEach((annotation) => {
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
 
         let selectionType: SelectionTypes = 'UNSELECTED';
+
+        const customStyle = annotationStyles.get(annotation.id);
 
         switch (annotation.id) {
             case annotationToHighlightId:
@@ -210,7 +241,7 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
                 y: middlePoint.y - 10,
             };
             drawPoint(selectionType, renderingContext, middlePoint);
-            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
+            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, customStyle);
             annotation.label = {
                 name: annotation.name,
                 path,
@@ -219,7 +250,7 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
         if (annotation.coordinates.length >= 2) {
             const firstPoint = annotation.coordinates[0];
             const secondPoint = annotation.coordinates[1];
-            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
+            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, customStyle);
             annotation.label = {
             name: annotation.name,
             path,

@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject, useImperativeHandle, ForwardedRef } from 'react';
-import { Annotation, Coordinates, StyleOptions } from './models';
+import { Annotation, Coordinates, PartialStyleOptions, StyleOptions } from './models';
 import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
 
 interface UseAnnotationEngineArgs {
@@ -115,6 +115,8 @@ export interface Operations {
     removeHighlightAnnotation(): void;
     temporaryHighlightAnnotation(annotationId: string | undefined, styleOptions?: StyleOptions): void;
     removeTemporaryHighlightAnnotation(): void;
+    setStyleToAnnotation(annotationId: string, style?: PartialStyleOptions): void;
+    removeStyleFromAnnotations(): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
     drawOnCanvas(draw: (context2d: CanvasRenderingContext2D) => void): void;
@@ -132,6 +134,8 @@ const useAnnotationEngine = ({
     const annotationToHighlightIdRef = useRef<string | undefined>(undefined);
     const annotationToTemporaryHighlightIdRef = useRef<string | undefined>(undefined);
     const annotationHighlightPointIndexRef = useRef<number | undefined>(undefined);
+    // FIXME unknown type
+    const annotationStyles = useRef<Map<string, PartialStyleOptions>>(new Map());
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
     const styleOptionsRef = useRef<StyleOptions | undefined>();
 
@@ -197,7 +201,7 @@ const useAnnotationEngine = ({
 
         renderingContextRef.current.clearRect(0, 0, currentCanvasRef.width, currentCanvasRef.height);
 
-        drawAnnotations(renderingContextRef.current, annotationsToDraw, annotationToHighlightIdRef.current, annotationToTemporaryHighlightIdRef.current);
+        drawAnnotations(renderingContextRef.current, annotationsToDraw, annotationToHighlightIdRef.current, annotationToTemporaryHighlightIdRef.current, annotationStyles.current);
 
         drawCurrentAnnotation(
             renderingContextRef.current,
@@ -242,6 +246,13 @@ const useAnnotationEngine = ({
             },
             removeTemporaryHighlightAnnotation: () => {
                 annotationToTemporaryHighlightIdRef.current = undefined;
+            },
+            setStyleToAnnotation: (annotationId: string, style: PartialStyleOptions = {}) => {
+                annotationStyles.current.set(annotationId, style);
+                console.info(annotationStyles.current);
+            },
+            removeStyleFromAnnotations: (): void => {
+                annotationStyles.current.clear();
             },
             movePoint: (pointId: PointId, to: Coordinates) => {
                 annotationToEditPointsRef.current[pointId] = to;
