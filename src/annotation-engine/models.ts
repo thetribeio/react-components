@@ -29,10 +29,16 @@ export type StyleOptions = {
         strokeColor: string,
         width: number,
     };
-    text: {
-        color: string;
-        align: CanvasTextAlign;
+    label: {
+        textColor: string;
+        textAlign: CanvasTextAlign;
         fillColor: string;
+        shadow: {
+            offsetX: number;
+            offsetY: number;
+            blur: number;
+            color: string;
+        };
     };
 }
 

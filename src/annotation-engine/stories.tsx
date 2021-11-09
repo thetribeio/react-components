@@ -247,12 +247,15 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         createNewPoint(event.at, event.currentGeometry, operations);
     }
     const hoverStyle: PartialStyleOptions = {
-        text: {
-            fillColor: 'green',
+        label: {
+            shadow: {
+                blur: 5,
+                color: 'darkblue',
+            },
         },
     };
     const clickStyle: PartialStyleOptions = {
-        text: {
+        label: {
             fillColor: 'red', 
         },
     };

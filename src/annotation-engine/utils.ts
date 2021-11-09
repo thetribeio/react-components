@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
 
 import { Coordinates, Annotation, SelectionTypes, StyleOptions, PartialStyleOptions, StylingStatusData } from './models';
-import { defaultStyle } from './style/defaultStyleOptions';
+import { defaultStyle, highlightedStyle, selectedStyle } from './style/defaultStyleOptions';
 
 export const areCoordinatesInsideCircle = (
     pointCoordinates: Coordinates,
@@ -84,41 +84,26 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
     const textSize = renderingContext.measureText(label);
     renderingContext.save();
     const style = overloadStyle(defaultStyle, customStyle);
-    const {align, color, fillColor} = style.text;
+    const { textAlign, textColor, fillColor, shadow } = style.label;
+    const { offsetX, offsetY, color, blur } = shadow;
 
-    renderingContext.textAlign = align as CanvasTextAlign;
+    renderingContext.textAlign = textAlign as CanvasTextAlign;
     // renderingContext.translate(from.x, from.y);
     // renderingContext.rotate(Math.atan2(distanceY, distanceX));
+    renderingContext.shadowOffsetX = offsetX;
+    renderingContext.shadowOffsetY = offsetY;
+    renderingContext.shadowColor = color;
+    renderingContext.shadowBlur = blur;
     renderingContext.fillStyle = fillColor;
     const path = drawRoundRect(renderingContext, { x: from.x - 2, y: from.y -20 }, textSize.width + 10, 20, 10);
-    renderingContext.fillStyle = color;
+    renderingContext.restore();
+    renderingContext.save();
+    renderingContext.fillStyle = textColor;
     renderingContext.fillText(label, from.x + 2, from.y -5);
     renderingContext.restore();
 
     return path;
 };
-
-
-// const getStyle = (type: SelectionTypes): StyleOptions => {
-//     let style;
-
-//     switch (type) {
-//         case 'SELECTED':
-//             style = selectedStyle;
-//             break;
-    
-//         case 'HIGHLIGHTED':
-//             style = highlightedStyle;
-//             break;
-    
-//         case 'UNSELECTED':    
-//         default:
-//             style = defaultStyle;
-//             break;
-//     }
-
-//     return style;
-// };
 
 const getStyle = (annotationId: string, stylingStatuses?: Map<string, StylingStatusData>): StyleOptions => {
 
@@ -147,7 +132,7 @@ export const drawPoint = (
     type: SelectionTypes,
     renderingContext: CanvasRenderingContext2D,
     coordinates: Coordinates,
-    style: StyleOptions,
+    style: StyleOptions = defaultStyle,
 ): void => {
     renderingContext.beginPath();
 
@@ -213,34 +198,16 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
 
-        const selectionType: SelectionTypes = 'UNSELECTED';
-
         const customStyle = getStyle(annotation.id, styledAnnotations);
-
-        // switch (annotation.id) {
-        //     case annotationToHighlightId:
-        //         selectionType = 'SELECTED';
-                
-        //         break;
-        
-        //     case annotationToTemporaryHighlightId:
-        //         selectionType = 'TEMPORARY_HIGHLIGHTED';
-                
-        //         break;
-        
-        //     default:
-        //         selectionType = 'UNSELECTED';
-        //         break;
-        // }
 
         annotation.coordinates.forEach((coordinates: Coordinates, index: number) => {
             if (previousCoordinates) {
                 if (annotation.isClosed === false) {
                     if (index > 0) {
-                        drawLine(selectionType, renderingContext, previousCoordinates, coordinates);
+                        drawLine('UNSELECTED', renderingContext, previousCoordinates, coordinates);
                     }
                 } else {
-                    drawLine(selectionType, renderingContext, previousCoordinates, coordinates);
+                    drawLine('UNSELECTED', renderingContext, previousCoordinates, coordinates);
                 }
             }
 
@@ -258,7 +225,7 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
                 x: middlePoint.x + textSize.width / 2,
                 y: middlePoint.y - 10,
             };
-            drawPoint(selectionType, renderingContext, middlePoint, customStyle);
+            drawPoint('UNSELECTED', renderingContext, middlePoint, customStyle);
             const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, customStyle);
             annotation.label = {
                 name: annotation.name,
@@ -270,9 +237,9 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
             const secondPoint = annotation.coordinates[1];
             const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, customStyle);
             annotation.label = {
-            name: annotation.name,
-            path,
-        };
+                name: annotation.name,
+                path,
+            };
         }
     });
 };
@@ -286,9 +253,9 @@ export const drawCurrentAnnotation = (
 ): void => {
     annotationPoints.forEach((annotationPoint: Coordinates, index: number) => {
         if (index === annotationHighlightPointIndex) {
-            // drawPoint('HIGHLIGHTED', renderingContext, annotationPoint);
+            drawPoint('HIGHLIGHTED', renderingContext, annotationPoint, highlightedStyle);
         } else {
-            // drawPoint('SELECTED', renderingContext, annotationPoint);
+            drawPoint('SELECTED', renderingContext, annotationPoint, selectedStyle);
         }
     });
 

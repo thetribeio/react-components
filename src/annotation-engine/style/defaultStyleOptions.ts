@@ -1,12 +1,16 @@
-// import { StyleOptions } from "../models";
-
 import { StyleOptions } from "../models";
 
-export const defaultStyle = {
-  text: {
-    align: 'left' as CanvasTextAlign,
-    color: '#0053CC',
-    fillColor: '#FFFFFF'
+export const defaultStyle: StyleOptions = {
+  label: {
+    textAlign: 'left' as CanvasTextAlign,
+    textColor: '#0053CC',
+    fillColor: '#FFFFFF',
+    shadow: {
+      offsetX: 0,
+      offsetY: 0,
+      color: 'black',
+      blur: 0,
+    },
   },
   line: {
     width: 2,
