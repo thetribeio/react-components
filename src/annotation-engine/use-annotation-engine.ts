@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject, useImperativeHandle, ForwardedRef } from 'react';
-import { Annotation, Coordinates, InputStyleOptions, StyleOptions } from './models';
+import { Annotation, AnnotationPathData, Coordinates, InputStyleOptions, StyleOptions } from './models';
 import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
 
 interface UseAnnotationEngineArgs {
@@ -47,14 +47,14 @@ export interface MouseDownOnExistingPointEvent {
 export interface MouseDownOnLabelEvent {
     type: 'mouse_down_on_label_event';
     at: Coordinates;
-    annotationId: string;
+    annotationsId: string[];
     event: MouseEvent;
 }
 
 export interface MouseMoveOnLabelEvent {
     type: 'mouse_move_on_label_event';
     at: Coordinates;
-    annotationId: string;
+    annotationsId: string[];
     event: MouseEvent;
 }
 
@@ -129,6 +129,7 @@ const useAnnotationEngine = ({
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
     const annotationHighlightPointIndexRef = useRef<number | undefined>(undefined);
     const styledAnnotations = useRef<Map<string, StyleOptions>>(new Map());
+    const annotationsPaths = useRef<Map<string, AnnotationPathData>>(new Map());
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
 
     const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
@@ -139,6 +140,17 @@ const useAnnotationEngine = ({
             y: event.clientY - rect.top,
         };
     };
+
+    const getMatchingAnnotationsId = (annotationsPathsMap: Map<string, AnnotationPathData>, { x, y }: Coordinates, renderingContext?: CanvasRenderingContext2D,): string[] => {
+        const clickedLabelAnnotationsId: string[] = [];
+        annotationsPathsMap.forEach((annotationPaths, annotationId) => {
+            if (renderingContext?.isPointInPath(annotationPaths.label, x, y)) {
+                clickedLabelAnnotationsId.push(annotationId)
+            }
+        })
+
+        return clickedLabelAnnotationsId;
+    }
 
     const detectClickOnExistingPoints = (coordinates: Array<Coordinates>, clickAt: Coordinates): Array<PointId> =>
         coordinates
@@ -159,12 +171,18 @@ const useAnnotationEngine = ({
     };
 
     useEffect(() => {
+        annotationsPaths.current.forEach((_annotationPath: AnnotationPathData, id: string) => {
+            if (!annotations.map((anno) => anno.id).includes(id)) {
+                annotationsPaths.current.delete(id);
+            }
+        })
+
         if (annotationToEdit) {
             annotationToEditPointsRef.current = annotationToEdit.coordinates;
         } else {
             annotationToEditPointsRef.current = [];
         }
-    }, [annotationToEdit]);
+    }, [annotationToEdit, annotations]);
 
     const annotationsToDraw = useMemo<Annotation[]>(() => {
         if (annotationToEdit) {
@@ -192,7 +210,7 @@ const useAnnotationEngine = ({
 
         renderingContextRef.current.clearRect(0, 0, currentCanvasRef.width, currentCanvasRef.height);
 
-        drawAnnotations(renderingContextRef.current, annotationsToDraw, styledAnnotations.current);
+        drawAnnotations(renderingContextRef.current, annotationsToDraw, styledAnnotations.current, annotationsPaths.current);
 
         drawCurrentAnnotation(
             renderingContextRef.current,
@@ -297,20 +315,15 @@ const useAnnotationEngine = ({
                 const eventCoords = canvasCoordinateOf(canvas, event);
                 const renderingContext = renderingContextRef.current;
 
-                // FIXME Laurent remove the !
-                // FIXME 2 Laurent : refacto this piece of code shared with other event
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                const annotationLabelWasSelected = (annotation: Annotation, coordinates: Coordinates): boolean => !!renderingContext?.isPointInPath(annotation!.label!.path, coordinates.x, coordinates.y);
+                const matchingAnnotationsId = getMatchingAnnotationsId(annotationsPaths.current, eventCoords, renderingContext);
 
-                const clickedLabelAnnotation = annotations.find((annotation) => annotationLabelWasSelected(annotation, eventCoords));
-
-                if (clickedLabelAnnotation) {
+                if (matchingAnnotationsId.length) {
                     return onEvent(
                         {
                             type: 'mouse_down_on_label_event',
                             at: eventCoords,
                             event,
-                            annotationId: clickedLabelAnnotation.id,
+                            annotationsId: matchingAnnotationsId,
                         },
                         operations,
                     )
@@ -350,21 +363,15 @@ const useAnnotationEngine = ({
             handleEvent((canvas) => {
                 const eventCoords = canvasCoordinateOf(canvas, event);
                 const renderingContext = renderingContextRef.current;
-
-                // FIXME Laurent remove the !
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                const annotationLabelWasSelected = (annotation: Annotation, coordinates: Coordinates): boolean => !!renderingContext?.isPointInPath(annotation!.label!.path, coordinates.x, coordinates.y);
-
-                // FIXME Laurent : refacto this
-                const selectedLabelAnnotation = annotations.find((annotation) => annotationLabelWasSelected(annotation, eventCoords));
-
-                if (selectedLabelAnnotation) {
+                const matchingAnnotationsId = getMatchingAnnotationsId(annotationsPaths.current, eventCoords, renderingContext);
+              
+                if (matchingAnnotationsId.length) {
                     return onEvent(
                         {
                             type: 'mouse_move_on_label_event',
                             at: eventCoords,
                             event,
-                            annotationId: selectedLabelAnnotation.id,
+                            annotationsId: matchingAnnotationsId,
                         },
                         operations,
                     )

@@ -7,6 +7,9 @@ const hoverStyle: PartialAnnotationStyle = {
           color: 'white',
       },
   },
+  line: {
+    strokeColor: 'lightblue',
+  }
 };
 const clickStyle: PartialAnnotationStyle = {
   label: {

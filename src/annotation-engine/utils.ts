@@ -1,6 +1,6 @@
 /* eslint-disable no-param-reassign */
 
-import { Coordinates, Annotation, SelectionTypes, AnnotationStyle, PartialAnnotationStyle, StyleOptions } from './models';
+import { Coordinates, Annotation, SelectionTypes, AnnotationStyle, PartialAnnotationStyle, StyleOptions, AnnotationPathData } from './models';
 import { defaultStyle, highlightedStyle, selectedStyle } from './style/defaultStyleOptions';
 
 export const areCoordinatesInsideCircle = (
@@ -193,7 +193,7 @@ export const drawLine = (
     renderingContext.closePath();
 };
 
-export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], styledAnnotations: Map<string, StyleOptions>): void => {
+export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], styledAnnotations: Map<string, StyleOptions>, annotationsPaths: Map<string, AnnotationPathData>): void => {
     annotations.forEach((annotation) => {
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
@@ -227,19 +227,13 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
             };
             drawPoint('UNSELECTED', renderingContext, middlePoint, style);
             const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, style);
-            annotation.label = {
-                name: annotation.name,
-                path,
-            };
+            annotationsPaths.set(annotation.id, {label: path});
         }
         if (annotation.coordinates.length >= 2) {
             const firstPoint = annotation.coordinates[0];
             const secondPoint = annotation.coordinates[1];
             const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, style);
-            annotation.label = {
-                name: annotation.name,
-                path,
-            };
+            annotationsPaths.set(annotation.id, {label: path});
         }
     });
 };

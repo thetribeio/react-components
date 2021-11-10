@@ -8,11 +8,11 @@ export type Annotation = {
     name: string;
     isClosed: boolean;
     coordinates: Coordinates[];
-    label?: {
-        name: string,
-        path: Path2D,
-    },
 };
+
+export interface AnnotationPathData {
+    label: Path2D;
+}
 
 export type SelectionTypes = 'UNSELECTED' | 'SELECTED' | 'HIGHLIGHTED';
 

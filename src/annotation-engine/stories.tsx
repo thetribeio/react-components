@@ -252,22 +252,22 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         if (isModeInactif()) {
             switch (event.type) {
                 case 'mouse_down_on_label_event':
-                    operations.setStyleToAnnotation(event.annotationId, clickStatus)
+                    // FIXME LATER : determine behavior in case of multiple ids
+                    operations.setStyleToAnnotation(event.annotationsId[0], clickStatus)
                     break;
                 case 'mouse_down_event':
                     operations.removeStylesFromAnnotations(['click']);
                     break;
                 case 'mouse_move_on_label_event':
-                    operations.setStyleToAnnotation(event.annotationId, hoverStatus)
+                    // FIXME LATER : determine behavior in case of multiple ids
+                    operations.setStyleToAnnotation(event.annotationsId[0], hoverStatus)
                     break;
                 case 'mouse_move_event':
                     operations.removeStylesFromAnnotations(['hover']);
-                break;
+                    break;
                 default:
                     break;
             }
-
-            return;
         }
         if (isModeCreation()) {
             switch (event.type) {
