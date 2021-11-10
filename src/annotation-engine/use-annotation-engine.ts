@@ -245,12 +245,12 @@ const useAnnotationEngine = ({
             },
             setStyleToAnnotation: (annotationId: string, stylingStatus: InputStyleOptions) => {
                 const { name, priority, style } = stylingStatus;
+                const previouslyStyledAnnotationsId = styledAnnotations.current.get(name)?.annotationsId || [];
                 styledAnnotations.current.set(name, {
-                    annotationsId: [annotationId],
+                    annotationsId: [...previouslyStyledAnnotationsId, annotationId],
                     priority,
                     style,
                 });
-                console.info(styledAnnotations.current);
             },
             removeStylesFromAnnotationsByStyleNames: (styleNames: string[]): void => {
                 styleNames.forEach((styleName) => styledAnnotations.current.delete(styleName));
