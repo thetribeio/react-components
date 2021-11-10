@@ -52,7 +52,9 @@ const overloadStyle = (style: AnnotationStyle, customStyle?: PartialAnnotationSt
     if(!customStyle) {
         return style;
     }
-
+    
+    // @Dimitri ou Manu : ici, le typage est assez lâche, et je n'ai pas encore réussi à le rendre plus strict.
+    // Comme on est dans un environnement contrôlé, est-ce que ça vaut le coup d'y passer plus de temps ?
     const isObject = (item: any) => (item && typeof item === 'object' && !Array.isArray(item))
 
     const mergeDeep = (target: any, source: any) => {
@@ -77,6 +79,10 @@ const overloadStyle = (style: AnnotationStyle, customStyle?: PartialAnnotationSt
     return mergeDeep(style, customStyle) as AnnotationStyle;
 }
 
+// @Dimitri et Manu l'orientation du label est désactivée en raison de la gestion du tracé avec des Path2D
+// faut-il trouver un moyen de le remettre en l'état, ou en profiter
+// pour corriger le comportement : toujours garder le label horizontal, mais en décalé "intelligent"
+// par rapport à la forme ?
 const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, to: Coordinates, customStyle?: PartialAnnotationStyle): Path2D => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const distanceX = to.x - from.x;
@@ -88,7 +94,7 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
     const { textAlign, textColor, fillColor, shadow } = style.label;
     const { offsetX, offsetY, color, blur } = shadow;
 
-    renderingContext.textAlign = textAlign as CanvasTextAlign;
+    renderingContext.textAlign = textAlign;
     // renderingContext.translate(from.x, from.y);
     // renderingContext.rotate(Math.atan2(distanceY, distanceX));
     renderingContext.shadowOffsetX = offsetX;
@@ -129,6 +135,13 @@ const getStyle = (annotationId: string, styledAnnotations?: Map<string, StyleOpt
 
 }
 
+// @Dimitri ou Manu
+// on a à mon sens des cas métier de roadcare écrits en dur dans l'AE :
+// - highlighted du premier point d'un polygone au survol (devient + gros)
+// - couleur différente des points et des lignes selon que l'on est 
+// sélectionné ou en cours d'édition
+// est-ce voulu, ou faut-il tout extraire et le gérer uniquement 
+// via l'objet operations selon des règles définies par userland ?
 export const drawPoint = (
     type: SelectionTypes,
     renderingContext: CanvasRenderingContext2D,
@@ -194,6 +207,10 @@ export const drawLine = (
     renderingContext.closePath();
 };
 
+// @Dimitri ou Manu :
+// pour le moment, je n'ai stylisé (et rendu cliquables) que les labels, au survol et à la sélection
+// Prévoit-on dès à présent d'étendre le comportement au clic / survol des formes elles-mêmes
+// ainsi qu'étendre la stylisation aux formes ?
 export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], styledAnnotations: Map<string, StyleOptions>, annotationsPaths: Map<string, AnnotationPathData>): void => {
     annotations.forEach((annotation) => {
         let previousCoordinates: Coordinates | undefined =
