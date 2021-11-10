@@ -84,9 +84,7 @@ const overloadStyle = (style: AnnotationStyle, customStyle?: PartialAnnotationSt
 // pour corriger le comportement : toujours garder le label horizontal, mais en décalé "intelligent"
 // par rapport à la forme ?
 const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, to: Coordinates, customStyle?: PartialAnnotationStyle): Path2D => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const distanceX = to.x - from.x;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const distanceY = to.y - from.y;
     const textSize = renderingContext.measureText(label);
     renderingContext.save();
@@ -113,8 +111,6 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
 };
 
 const getStyle = (annotationId: string, styledAnnotations?: Map<string, StyleOptions>): AnnotationStyle => {
-
-    
     const stylingStatusDatas: StyleOptions[] = [];
     
     if (!styledAnnotations) {
