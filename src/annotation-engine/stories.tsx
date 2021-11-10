@@ -50,15 +50,18 @@ const Label = styled.label`
     color: white;
 `;
 
-type SaveAnnotationFunction = (geometry: Array<Coordinates>, isClosed: boolean) => void;
+type SaveAnnotationFunction = (geometry: Array<Coordinates>, isClosed: boolean) => string;
 
 const useSaveAnnotation = () => {
     const [annotations, setAnnotations] = useState<Annotation[]>([]);
     const [annotationToEdit, setAnnotationToEdit] = useState<Annotation | undefined>(undefined);
 
-    const saveAnnotation = (geometry: Array<Coordinates>, isClosed: boolean) => {
+    const saveAnnotation = (geometry: Array<Coordinates>, isClosed: boolean): string => {
+        let id = '';
         setAnnotations(annotations.map((annotation) => {
             if (annotation.id === annotationToEdit?.id) {
+                id = annotation.id;
+
                 return { ...annotationToEdit, coordinates: geometry, isClosed };
             }
 
@@ -66,9 +69,11 @@ const useSaveAnnotation = () => {
         }));
         setAnnotationToEdit(undefined);
         if (!annotationToEdit) {
-            const id = `${annotations.length ? Number(annotations[annotations.length - 1].id) + 1 : 1}`;
+            id = `${annotations.length ? Number(annotations[annotations.length - 1].id) + 1 : 1}`;
             setAnnotations([...annotations, { id, name: `Mesure ${id}`, coordinates: geometry, isClosed }]);
         }
+
+        return id;
     };
 
     return {
@@ -218,7 +223,9 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         }
         operations.finishCurrentLine();
         state.current = initState();
-        saveAnnotation(currentGeometry, isShapeClosed);
+        const id = saveAnnotation(currentGeometry, isShapeClosed);
+        operations.removeStylesFromAnnotationsByStyleNames([clickStatus.name])
+        operations.setStyleToAnnotation(id, clickStatus)
     };
 
     const lastValidatedPoint = (currentGeometry: Coordinates[]): PointId => {
