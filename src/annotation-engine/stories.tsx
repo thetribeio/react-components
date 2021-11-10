@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
 import Button from '../button';
 import { Annotation, Coordinates } from './models';
-import { clickStatus, hoverStatus } from './style/stories';
+import { clickStyle, hoverStyle } from './style/stories';
 import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent } from './use-annotation-engine';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
 
@@ -224,8 +224,8 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         operations.finishCurrentLine();
         state.current = initState();
         const id = saveAnnotation(currentGeometry, isShapeClosed);
-        operations.removeStylesFromAnnotationsByStyleNames([clickStatus.name])
-        operations.setStyleToAnnotation(id, clickStatus)
+        operations.removeStylesFromAnnotationsByStyleNames([clickStyle.name])
+        operations.setStyleToAnnotations([id], clickStyle)
     };
 
     const lastValidatedPoint = (currentGeometry: Coordinates[]): PointId => {
@@ -259,17 +259,25 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         if (isModeInactif()) {
             switch (event.type) {
                 case 'mouse_down_on_label_event':
-                    operations.removeStylesFromAnnotationsByStyleNames([clickStatus.name])
+                    operations.removeStylesFromAnnotationsByStyleNames([clickStyle.name]);
                     // FIXME LATER : determine behavior in case of multiple ids
-                    operations.setStyleToAnnotation(event.annotationsId[0], clickStatus)
+                    operations.setStyleToAnnotations([event.annotationsId[0]], clickStyle);
                     break;
-                case 'mouse_move_on_label_event':
-                        // FIXME LATER : determine behavior in case of multiple ids
-                    operations.removeStylesFromAnnotationsByStyleNames([hoverStatus.name])
-                    operations.setStyleToAnnotation(event.annotationsId[0], hoverStatus)
+                case 'mouse_move_on_label_event': {
+                    // FIXME LATER : determine behavior in case of multiple ids
+                    // currently gives styling to all successively hovered annotations
+                    // => not clear for the user which one will be selected when he clicks
+                    const { annotationsIdsWithStyle } = event;
+                    const annotationsToStyle = annotationsIdsWithStyle
+                        .filter((annotation) => !annotation.style || annotation.style.priority < hoverStyle.priority)
+                        .map((annotation) => annotation.id);
+
+                    operations.setStyleToAnnotations(annotationsToStyle, hoverStyle);
+   
                     break;
+                }
                 case 'mouse_move_event':
-                    operations.removeStylesFromAnnotationsByStyleNames([hoverStatus.name]);
+                    operations.removeStylesFromAnnotationsByStyleNames([hoverStyle.name]);
                     break;
                 default:
                     break;

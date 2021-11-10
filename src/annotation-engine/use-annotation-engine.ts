@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject, useImperativeHandle, ForwardedRef } from 'react';
-import { Annotation, AnnotationPathData, Coordinates, InputStyleOptions, StyleOptions } from './models';
+import { Annotation, AnnotationPathData, Coordinates, StyleData } from './models';
 import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
 
 interface UseAnnotationEngineArgs {
@@ -54,7 +54,7 @@ export interface MouseDownOnLabelEvent {
 export interface MouseMoveOnLabelEvent {
     type: 'mouse_move_on_label_event';
     at: Coordinates;
-    annotationsId: string[];
+    annotationsIdsWithStyle: { id: string, style?: StyleData }[];
     event: MouseEvent;
 }
 
@@ -111,8 +111,9 @@ export interface Operations {
     addPoint(at: Coordinates): PointId;
     highlightExistingPoint(pointId: PointId): void;
     removeHighlightPoint(): void;
-    setStyleToAnnotation(annotationId: string, stylingData: InputStyleOptions): void;
+    setStyleToAnnotations(annotationsId: string[], stylingData: StyleData): void;
     removeStylesFromAnnotationsByStyleNames(styleNames: string[]): void;
+    removeStyleFromAnnotationsById(id: string[]): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
     drawOnCanvas(draw: (context2d: CanvasRenderingContext2D) => void): void;
@@ -128,7 +129,7 @@ const useAnnotationEngine = ({
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
     const annotationHighlightPointIndexRef = useRef<number | undefined>(undefined);
-    const styledAnnotations = useRef<Map<string, StyleOptions>>(new Map());
+    const styledAnnotations = useRef<Map<string, StyleData>>(new Map());
     const annotationsPaths = useRef<Map<string, AnnotationPathData>>(new Map());
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
 
@@ -243,17 +244,20 @@ const useAnnotationEngine = ({
             removeHighlightPoint: () => {
                 annotationHighlightPointIndexRef.current = undefined;
             },
-            setStyleToAnnotation: (annotationId: string, stylingStatus: InputStyleOptions) => {
-                const { name, priority, style } = stylingStatus;
-                const previouslyStyledAnnotationsId = styledAnnotations.current.get(name)?.annotationsId || [];
-                styledAnnotations.current.set(name, {
-                    annotationsId: [...previouslyStyledAnnotationsId, annotationId],
-                    priority,
-                    style,
-                });
+            setStyleToAnnotations: (annotationsId: string[], stylingStatus: StyleData) => {
+                annotationsId.forEach((annotationId) => {
+                    styledAnnotations.current.set(annotationId, stylingStatus);
+                })
             },
             removeStylesFromAnnotationsByStyleNames: (styleNames: string[]): void => {
-                styleNames.forEach((styleName) => styledAnnotations.current.delete(styleName));
+                styledAnnotations.current.forEach((styleData, annotationId, styledAnnotationsMap) => {
+                    if (styleNames.includes(styleData.name)) {
+                        styledAnnotationsMap.delete(annotationId);
+                    }
+                })
+            },
+            removeStyleFromAnnotationsById: (annotationsId: string[]): void => {
+                annotationsId.forEach((id) => styledAnnotations.current.delete(id));
             },
             movePoint: (pointId: PointId, to: Coordinates) => {
                 annotationToEditPointsRef.current[pointId] = to;
@@ -366,12 +370,18 @@ const useAnnotationEngine = ({
                 const matchingAnnotationsId = getMatchingAnnotationsId(annotationsPaths.current, eventCoords, renderingContext);
               
                 if (matchingAnnotationsId.length) {
+                    const annotationsIdsWithStyle = matchingAnnotationsId.map((id) => {
+                        const style = styledAnnotations.current.get(id);
+
+                        return ({ id, style });
+                    })
+                    
                     return onEvent(
                         {
                             type: 'mouse_move_on_label_event',
                             at: eventCoords,
                             event,
-                            annotationsId: matchingAnnotationsId,
+                            annotationsIdsWithStyle,
                         },
                         operations,
                     )

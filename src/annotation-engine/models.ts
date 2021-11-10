@@ -50,14 +50,8 @@ type RecursivePartial<T> = {
 
   export type PartialAnnotationStyle = RecursivePartial<AnnotationStyle>;
 
-  export interface StyleOptions {
-    priority: number;
-    annotationsId: string[];
-    style: PartialAnnotationStyle;
-  }
-
-  export interface InputStyleOptions {
-    priority: number;
-    style: PartialAnnotationStyle;
+  export interface StyleData {
     name: string;
-  }
+    style: PartialAnnotationStyle;
+    priority: number;
+}

@@ -1,6 +1,6 @@
-import { InputStyleOptions, PartialAnnotationStyle } from "../models";
+import { StyleData, PartialAnnotationStyle } from "../models";
 
-const hoverStyle: PartialAnnotationStyle = {
+const hoverStyleOptions: PartialAnnotationStyle = {
   label: {
       shadow: {
           blur: 8,
@@ -11,20 +11,20 @@ const hoverStyle: PartialAnnotationStyle = {
     strokeColor: 'lightblue',
   }
 };
-const clickStyle: PartialAnnotationStyle = {
+const clickStyleOptions: PartialAnnotationStyle = {
   label: {
       fillColor: 'lightblue', 
   },
 };
 
-export const hoverStatus: InputStyleOptions = {
+export const hoverStyle: StyleData = {
   priority: 0,
-  style: hoverStyle,
+  style: hoverStyleOptions,
   name: 'hover',
 };
 
-export const clickStatus: InputStyleOptions = {
+export const clickStyle: StyleData = {
   priority: 1,
-  style: clickStyle,
+  style: clickStyleOptions,
   name: 'click',
 };
