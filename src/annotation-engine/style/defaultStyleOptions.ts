@@ -2,7 +2,7 @@ import { AnnotationStyle } from "../models";
 
 export const defaultStyle: AnnotationStyle = {
   label: {
-    textAlign: 'left' as CanvasTextAlign,
+    textAlign: 'left',
     textColor: '#0053CC',
     fillColor: '#FFFFFF',
     shadow: {
@@ -14,7 +14,7 @@ export const defaultStyle: AnnotationStyle = {
   },
   line: {
     width: 2,
-    cap: 'round' as CanvasLineCap,
+    cap: 'round',
     strokeColor: '#FFFFFF',
   },
   point: {

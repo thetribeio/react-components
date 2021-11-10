@@ -112,7 +112,7 @@ export interface Operations {
     highlightExistingPoint(pointId: PointId): void;
     removeHighlightPoint(): void;
     setStyleToAnnotation(annotationId: string, stylingData: InputStyleOptions): void;
-    removeStylesFromAnnotations(styleNames: string[]): void;
+    removeStylesFromAnnotationsByStyleNames(styleNames: string[]): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
     drawOnCanvas(draw: (context2d: CanvasRenderingContext2D) => void): void;
@@ -252,7 +252,7 @@ const useAnnotationEngine = ({
                 });
                 console.info(styledAnnotations.current);
             },
-            removeStylesFromAnnotations: (styleNames: string[]): void => {
+            removeStylesFromAnnotationsByStyleNames: (styleNames: string[]): void => {
                 styleNames.forEach((styleName) => styledAnnotations.current.delete(styleName));
             },
             movePoint: (pointId: PointId, to: Coordinates) => {

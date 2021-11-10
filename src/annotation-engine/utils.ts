@@ -58,14 +58,15 @@ const overloadStyle = (style: AnnotationStyle, customStyle?: PartialAnnotationSt
     const mergeDeep = (target: any, source: any) => {
         const output = {...target};
         if (isObject(target) && isObject(source)) {
-        Object.keys(source).forEach(key => {
-            if (isObject(source[key])) {
-            if (!(key in target))
-                Object.assign(output, { [key]: source[key] });
-            else
-                output[key] = mergeDeep(target[key], source[key]);
+            Object.keys(source).forEach(key => {
+                if (isObject(source[key])) {
+                    if (!(key in target))
+                        Object.assign(output, { [key]: source[key] });
+                    else {
+                        output[key] = mergeDeep(target[key], source[key]);
+                    }
                 } else {
-                Object.assign(output, { [key]: source[key] });
+                    Object.assign(output, { [key]: source[key] });
                 }
             });
         }
@@ -108,7 +109,7 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
 const getStyle = (annotationId: string, styledAnnotations?: Map<string, StyleOptions>): AnnotationStyle => {
 
     
-    const stylingStatusDatas = [] as StyleOptions[];
+    const stylingStatusDatas: StyleOptions[] = [];
     
     if (!styledAnnotations) {
         return defaultStyle;
