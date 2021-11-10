@@ -218,27 +218,38 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
             previousCoordinates = coordinates;
         });
 
-        if (annotation.coordinates.length === 1) {
-            const middlePoint = annotation.coordinates[0];
+        const getHighestPoint = (coordinates: Coordinates[]): Coordinates => coordinates.reduce((coord1, coord2) => {
+                if (coord1.y < coord2.y) {
+                    return coord1;
+                }
+
+                return coord2;
+            });
+
+        const getLabelCoordinates = (middlePoint: Coordinates): {firstPoint: Coordinates, secondPoint: Coordinates} => {
             const textSize = renderingContext.measureText(annotation.name);
-            const firstPoint = {
-                x: middlePoint.x - textSize.width / 2,
-                y: middlePoint.y - 10,
-            };
-            const secondPoint = {
-                x: middlePoint.x + textSize.width / 2,
-                y: middlePoint.y - 10,
-            };
-            drawPoint('UNSELECTED', renderingContext, middlePoint, style);
-            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, style);
-            annotationsPaths.set(annotation.id, {label: path});
+
+            return ({
+                firstPoint: {
+                    x: middlePoint.x - textSize.width / 2,
+                    y: middlePoint.y - 10,
+                },
+                secondPoint: {
+                    x: middlePoint.x + textSize.width / 2,
+                    y: middlePoint.y - 10,
+                }
+            });
+        };
+
+        const highestPoint = getHighestPoint(annotation.coordinates)
+        const { firstPoint, secondPoint } = getLabelCoordinates(highestPoint);
+
+        if (annotation.coordinates.length === 1) {
+            drawPoint('UNSELECTED', renderingContext, highestPoint, style);
         }
-        if (annotation.coordinates.length >= 2) {
-            const firstPoint = annotation.coordinates[0];
-            const secondPoint = annotation.coordinates[1];
-            const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, style);
-            annotationsPaths.set(annotation.id, {label: path});
-        }
+
+        const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, style);
+        annotationsPaths.set(annotation.id, {label: path});
     });
 };
 
