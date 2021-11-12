@@ -90,7 +90,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
     const [numberOfPoints, setNumberOfPoints] = useState(0);
     const [shapeType, setShapeType] = useState(availableShapeTypes[0]);
     const [isShapeClosed, setIsShapeClosed] = useState(true);
-    const [hoveredAnnotationsId, setHoveredAnnotationsId] = useState<string[]>([]);
+    const [lastHoveredAnnotationId, setLastHoveredAnnotationId] = useState('');
 
     const isModeEdition = () => annotationToEdit !== undefined;
     const isModeCreation = () => !isModeEdition() && numberOfPoints > 0;
@@ -268,21 +268,24 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                 case 'mouse_move_on_label_event': {
                     const { annotationsIdsWithStyle } = event;
 
-                    const currentlyHoveredAnnotationsId = annotationsIdsWithStyle
+                    const hoveredAnnotationsId = annotationsIdsWithStyle
                         .filter((annotation) => annotation?.style?.name !== clickStyle.name)
                         .map((annotation) => annotation.id);
+                    console.info(hoveredAnnotationsId[0]);
+                    const newHoveredAnnotationId = hoveredAnnotationsId[0];
 
-                    const annotationIdToStyle = currentlyHoveredAnnotationsId[0]
-                    operations.setStyleToAnnotations([annotationIdToStyle], hoverStyle);
-                        
-                    setHoveredAnnotationsId(currentlyHoveredAnnotationsId);
-                    const annotationsIdToUnstyle = hoveredAnnotationsId.filter((id) => id !== annotationIdToStyle);
-                    operations.removeStyleFromAnnotationsById(annotationsIdToUnstyle);
-   
+                    if (newHoveredAnnotationId) {
+                        if (lastHoveredAnnotationId !== newHoveredAnnotationId) {
+                            operations.removeStyleFromAnnotationsById([lastHoveredAnnotationId]);
+                            setLastHoveredAnnotationId(newHoveredAnnotationId);
+                        }
+                        operations.setStyleToAnnotations([newHoveredAnnotationId], hoverStyle);
+                    }
+
                     break;
                 }
                 case 'mouse_move_event':
-                    setHoveredAnnotationsId([]);
+                    setLastHoveredAnnotationId('');
                     operations.removeStylesFromAnnotationsByStyleNames([hoverStyle.name]);
                     break;
                 default:
