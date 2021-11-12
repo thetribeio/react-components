@@ -18,13 +18,11 @@ const clickStyleOptions: PartialAnnotationStyle = {
 };
 
 export const hoverStyle: StyleData = {
-  priority: 0,
   style: hoverStyleOptions,
   name: 'hover',
 };
 
 export const clickStyle: StyleData = {
-  priority: 1,
   style: clickStyleOptions,
   name: 'click',
 };

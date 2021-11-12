@@ -90,6 +90,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
     const [numberOfPoints, setNumberOfPoints] = useState(0);
     const [shapeType, setShapeType] = useState(availableShapeTypes[0]);
     const [isShapeClosed, setIsShapeClosed] = useState(true);
+    const [hoveredAnnotationsId, setHoveredAnnotationsId] = useState<string[]>([]);
 
     const isModeEdition = () => annotationToEdit !== undefined;
     const isModeCreation = () => !isModeEdition() && numberOfPoints > 0;
@@ -264,19 +265,22 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                     operations.setStyleToAnnotations([event.annotationsId[0]], clickStyle);
                     break;
                 case 'mouse_move_on_label_event': {
-                    // FIXME LATER : determine behavior in case of multiple ids
-                    // currently gives styling to all successively hovered annotations
-                    // => not clear for the user which one will be selected when he clicks
                     const { annotationsIdsWithStyle } = event;
-                    const annotationsToStyle = annotationsIdsWithStyle
-                        .filter((annotation) => !annotation.style || annotation.style.priority < hoverStyle.priority)
-                        .map((annotation) => annotation.id);
+                    const annotationIdToStyle = annotationsIdsWithStyle
+                        .filter((annotation) => annotation?.style?.name !== clickStyle.name)
+                        .map((annotation) => annotation.id)
+                        [0];
 
-                    operations.setStyleToAnnotations(annotationsToStyle, hoverStyle);
+                    operations.setStyleToAnnotations([annotationIdToStyle], hoverStyle);
+                        
+                    setHoveredAnnotationsId([annotationIdToStyle]);
+                    const annotationsIdToUnstyle = hoveredAnnotationsId.filter((id) => !annotationIdToStyle.includes(id));
+                    operations.removeStyleFromAnnotationsById(annotationsIdToUnstyle);
    
                     break;
                 }
                 case 'mouse_move_event':
+                    setHoveredAnnotationsId([]);
                     operations.removeStylesFromAnnotationsByStyleNames([hoverStyle.name]);
                     break;
                 default:

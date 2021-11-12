@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject, useImperativeHandle, ForwardedRef } from 'react';
-import { Annotation, AnnotationPathData, Coordinates, StyleData } from './models';
+import { Annotation, AnnotationPathData, Coordinates, StyleData, StyleDataByAnnotationId } from './models';
 import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
 
 interface UseAnnotationEngineArgs {
@@ -129,7 +129,7 @@ const useAnnotationEngine = ({
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
     const annotationHighlightPointIndexRef = useRef<number | undefined>(undefined);
-    const styledAnnotations = useRef<Map<string, StyleData>>(new Map());
+    const styledAnnotations = useRef<StyleDataByAnnotationId>(new Map());
     const annotationsPaths = useRef<Map<string, AnnotationPathData>>(new Map());
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
 

@@ -48,10 +48,11 @@ type RecursivePartial<T> = {
       T[P];
   };
 
-  export type PartialAnnotationStyle = RecursivePartial<AnnotationStyle>;
+export type PartialAnnotationStyle = RecursivePartial<AnnotationStyle>;
 
-  export interface StyleData {
-    name: string;
-    style: PartialAnnotationStyle;
-    priority: number;
+export interface StyleData {
+name: string;
+style: PartialAnnotationStyle;
 }
+
+export type StyleDataByAnnotationId = Map<string, StyleData>;

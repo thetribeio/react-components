@@ -1,6 +1,6 @@
 /* eslint-disable no-param-reassign */
 
-import { Coordinates, Annotation, SelectionTypes, AnnotationStyle, PartialAnnotationStyle, StyleData, AnnotationPathData } from './models';
+import { Coordinates, Annotation, SelectionTypes, AnnotationStyle, PartialAnnotationStyle, StyleData, AnnotationPathData, StyleDataByAnnotationId } from './models';
 import { defaultStyle, highlightedStyle, selectedStyle } from './style/defaultStyleOptions';
 
 export const areCoordinatesInsideCircle = (
@@ -110,7 +110,7 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
     return path;
 };
 
-const getStyle = (annotationId: string, styledAnnotations?: Map<string, StyleData>): AnnotationStyle => {
+const getStyle = (annotationId: string, styledAnnotations?: StyleDataByAnnotationId): AnnotationStyle => {
     const customStyle = styledAnnotations?.get(annotationId)?.style;
     
     if (!styledAnnotations || !customStyle) {
@@ -197,7 +197,7 @@ export const drawLine = (
 // pour le moment, je n'ai stylisé (et rendu cliquables) que les labels, au survol et à la sélection
 // Prévoit-on dès à présent d'étendre le comportement au clic / survol des formes elles-mêmes
 // ainsi qu'étendre la stylisation aux formes ?
-export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], styledAnnotations: Map<string, StyleData>, annotationsPaths: Map<string, AnnotationPathData>): void => {
+export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], styledAnnotations: StyleDataByAnnotationId, annotationsPaths: Map<string, AnnotationPathData>): void => {
     annotations.forEach((annotation) => {
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
