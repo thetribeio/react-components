@@ -32,15 +32,15 @@ export const drawRoundRect = (
         coordinates.x + width,
         coordinates.y + radius,
     );
-    path.lineTo(coordinates.x + width, coordinates.y + height);
+    path.lineTo(coordinates.x + width, coordinates.y + height - radius);
     path.quadraticCurveTo(
         coordinates.x + width,
         coordinates.y + height,
-        coordinates.x + width,
+        coordinates.x + width - radius,
         coordinates.y + height,
     );
-    path.lineTo(coordinates.x, coordinates.y + height);
-    path.quadraticCurveTo(coordinates.x, coordinates.y + height, coordinates.x, coordinates.y + height);
+    path.lineTo(coordinates.x + radius, coordinates.y + height);
+    path.quadraticCurveTo(coordinates.x, coordinates.y + height, coordinates.x, coordinates.y + height - radius);
     path.lineTo(coordinates.x, coordinates.y + radius);
     path.quadraticCurveTo(coordinates.x, coordinates.y, coordinates.x + radius, coordinates.y);
     renderingContext.fill(path);
@@ -93,7 +93,7 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
     renderingContext.textAlign = textAlign;
     applyShadow(renderingContext, shadow);
     renderingContext.fillStyle = fillColor;
-    const path = drawRoundRect(renderingContext, { x: from.x - 2, y: from.y -20 }, textSize.width + 10, 20, 10);
+    const path = drawRoundRect(renderingContext, { x: from.x - 2, y: from.y -20 }, textSize.width + 10, 20, 5);
     renderingContext.restore();
     renderingContext.save();
     renderingContext.fillStyle = textColor;
