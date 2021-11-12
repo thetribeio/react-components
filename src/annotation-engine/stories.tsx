@@ -267,14 +267,15 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                     break;
                 case 'mouse_move_on_label_event': {
                     const { annotationsIdsWithStyle } = event;
-                    const annotationIdToStyle = annotationsIdsWithStyle
-                        .filter((annotation) => annotation?.style?.name !== clickStyle.name)
-                        .map((annotation) => annotation.id)
-                        [0];
 
+                    const currentlyHoveredAnnotationsId = annotationsIdsWithStyle
+                        .filter((annotation) => annotation?.style?.name !== clickStyle.name)
+                        .map((annotation) => annotation.id);
+
+                    const annotationIdToStyle = currentlyHoveredAnnotationsId[0]
                     operations.setStyleToAnnotations([annotationIdToStyle], hoverStyle);
                         
-                    setHoveredAnnotationsId([annotationIdToStyle]);
+                    setHoveredAnnotationsId(currentlyHoveredAnnotationsId);
                     const annotationsIdToUnstyle = hoveredAnnotationsId.filter((id) => id !== annotationIdToStyle);
                     operations.removeStyleFromAnnotationsById(annotationsIdToUnstyle);
    
