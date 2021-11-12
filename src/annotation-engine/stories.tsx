@@ -90,7 +90,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
     const [numberOfPoints, setNumberOfPoints] = useState(0);
     const [shapeType, setShapeType] = useState(availableShapeTypes[0]);
     const [isShapeClosed, setIsShapeClosed] = useState(true);
-    const [lastHoveredAnnotationId, setLastHoveredAnnotationId] = useState('');
+    const [currentlyHoveredAnnotationId, setCurrentlyHoveredAnnotationId] = useState('');
 
     const isModeEdition = () => annotationToEdit !== undefined;
     const isModeCreation = () => !isModeEdition() && numberOfPoints > 0;
@@ -262,7 +262,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
             switch (event.type) {
                 case 'mouse_down_on_annotation_event':
                     operations.removeStylesFromAnnotationsByStyleNames([clickStyle.name]);
-                    setLastHoveredAnnotationId('');
+                    setCurrentlyHoveredAnnotationId('');
                     // FIXME LATER : determine behavior in case of multiple ids
                     operations.setStyleToAnnotations([event.annotationsId[0]], clickStyle);
                     break;
@@ -275,9 +275,9 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                     const newHoveredAnnotationId = hoveredAnnotationsId[0];
 
                     if (newHoveredAnnotationId) {
-                        if (lastHoveredAnnotationId !== newHoveredAnnotationId) {
-                            operations.removeStyleFromAnnotationsById([lastHoveredAnnotationId]);
-                            setLastHoveredAnnotationId(newHoveredAnnotationId);
+                        if (currentlyHoveredAnnotationId !== newHoveredAnnotationId) {
+                            operations.removeStyleFromAnnotationsById([currentlyHoveredAnnotationId]);
+                            setCurrentlyHoveredAnnotationId(newHoveredAnnotationId);
                         }
                         operations.setStyleToAnnotations([newHoveredAnnotationId], hoverStyle);
                     }
@@ -285,7 +285,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                     break;
                 }
                 case 'mouse_move_event':
-                    setLastHoveredAnnotationId('');
+                    setCurrentlyHoveredAnnotationId('');
                     operations.removeStylesFromAnnotationsByStyleNames([hoverStyle.name]);
                     break;
                 default:
@@ -296,7 +296,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
             switch (event.type) {
                 case 'mouse_move_on_existing_point_event':
                     if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
-                        operations.setStyleToPoints(['0'], highlightStyle)
+                        operations.setStyleToPointsByIndex(['0'], highlightStyle)
                     }
                     break;
                 case 'key_down_event':
