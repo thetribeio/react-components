@@ -21,7 +21,7 @@ const defaultStyle: AnnotationStyle = {
     width: 2,
     outerRadius: 7,
     innerRadius: 5,
-    strokeColor: '#FFFFFF95',
+    strokeColor: '#FFF',
     fillColor: '#0053CC30'
   },
 }

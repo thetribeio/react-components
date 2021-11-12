@@ -121,7 +121,6 @@ export const drawPoint = (
 ): Path2D => {
 
     const pointPath = new Path2D();
-    pointPath.addPath(pointPath);
     const { strokeColor, width, outerRadius, innerRadius, fillColor } = style.point;
     const { shadow } = style.label;
     // stroke and line
@@ -135,19 +134,16 @@ export const drawPoint = (
     pointPath.arc(coordinates.x, coordinates.y, outerRadius, 0, Math.PI * 2, true);
 
     renderingContext.stroke(pointPath);
-    pointPath.closePath();
     renderingContext.restore();
   
 
     // fill
-    pointPath.addPath(pointPath);
     renderingContext.fillStyle = fillColor;
  
     // arc
     pointPath.arc(coordinates.x, coordinates.y, innerRadius, 0, Math.PI * 2, true);
 
     renderingContext.fill(pointPath);
-    pointPath.closePath();
 
     return pointPath;
 };
