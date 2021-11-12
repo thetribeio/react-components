@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
 
-import { Coordinates, Annotation, SelectionTypes, AnnotationStyle, PartialAnnotationStyle, StyleData, AnnotationPathData, StyleDataByAnnotationId } from './models';
-import { defaultStyle, highlightedStyle, selectedStyle } from './style/defaultStyleOptions';
+import { Coordinates, Annotation, AnnotationStyle, PartialAnnotationStyle, AnnotationPathData, StyleDataById, ShadowStyle } from './models';
+import defaultStyle from './style/defaultStyleOptions';
 
 export const areCoordinatesInsideCircle = (
     pointCoordinates: Coordinates,
@@ -16,6 +16,7 @@ export const areCoordinatesInsideCircle = (
     return distance < squareRadius;
 };
 
+// TODO @Laurent : add round egdes to bottom
 export const drawRoundRect = (
     renderingContext: CanvasRenderingContext2D,
     coordinates: Coordinates,
@@ -48,13 +49,11 @@ export const drawRoundRect = (
     return path;
 };
 
-const overloadStyle = (style: AnnotationStyle, customStyle?: PartialAnnotationStyle): AnnotationStyle => {
+export const overloadStyle = (style: AnnotationStyle, customStyle?: PartialAnnotationStyle): AnnotationStyle => {
     if(!customStyle) {
         return style;
     }
     
-    // @Dimitri ou Manu : ici, le typage est assez lâche, et je n'ai pas encore réussi à le rendre plus strict.
-    // Comme on est dans un environnement contrôlé, est-ce que ça vaut le coup d'y passer plus de temps ?
     const isObject = (item: any) => (item && typeof item === 'object' && !Array.isArray(item))
 
     const mergeDeep = (target: any, source: any) => {
@@ -79,26 +78,21 @@ const overloadStyle = (style: AnnotationStyle, customStyle?: PartialAnnotationSt
     return mergeDeep(style, customStyle) as AnnotationStyle;
 }
 
-// @Dimitri et Manu l'orientation du label est désactivée en raison de la gestion du tracé avec des Path2D
-// faut-il trouver un moyen de le remettre en l'état, ou en profiter
-// pour corriger le comportement : toujours garder le label horizontal, mais en décalé "intelligent"
-// par rapport à la forme ?
-const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, to: Coordinates, customStyle?: PartialAnnotationStyle): Path2D => {
-    const distanceX = to.x - from.x;
-    const distanceY = to.y - from.y;
-    const textSize = renderingContext.measureText(label);
-    renderingContext.save();
-    const style = overloadStyle(defaultStyle, customStyle);
-    const { textAlign, textColor, fillColor, shadow } = style.label;
-    const { offsetX, offsetY, color, blur } = shadow;
-
-    renderingContext.textAlign = textAlign;
-    // renderingContext.translate(from.x, from.y);
-    // renderingContext.rotate(Math.atan2(distanceY, distanceX));
+const applyShadow = (renderingContext: CanvasRenderingContext2D, {blur, color, offsetX, offsetY}: ShadowStyle) => {
     renderingContext.shadowOffsetX = offsetX;
     renderingContext.shadowOffsetY = offsetY;
     renderingContext.shadowColor = color;
     renderingContext.shadowBlur = blur;
+};
+
+const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, style: AnnotationStyle): Path2D => {
+    const textSize = renderingContext.measureText(label);
+    renderingContext.save();
+    const { textAlign, textColor, fillColor, shadow } = style.label;
+
+
+    renderingContext.textAlign = textAlign;
+    applyShadow(renderingContext, shadow);
     renderingContext.fillStyle = fillColor;
     const path = drawRoundRect(renderingContext, { x: from.x - 2, y: from.y -20 }, textSize.width + 10, 20, 10);
     renderingContext.restore();
@@ -110,7 +104,7 @@ const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, fr
     return path;
 };
 
-const getStyle = (annotationId: string, styledAnnotations?: StyleDataByAnnotationId): AnnotationStyle => {
+const getStyle = (annotationId: string, styledAnnotations?: StyleDataById): AnnotationStyle => {
     const customStyle = styledAnnotations?.get(annotationId)?.style;
     
     if (!styledAnnotations || !customStyle) {
@@ -119,17 +113,9 @@ const getStyle = (annotationId: string, styledAnnotations?: StyleDataByAnnotatio
     
     return overloadStyle(defaultStyle, customStyle);
 
-}
+};
 
-// @Dimitri ou Manu
-// on a à mon sens des cas métier de roadcare écrits en dur dans l'AE :
-// - highlighted du premier point d'un polygone au survol (devient + gros)
-// - couleur différente des points et des lignes selon que l'on est 
-// sélectionné ou en cours d'édition
-// est-ce voulu, ou faut-il tout extraire et le gérer uniquement 
-// via l'objet operations selon des règles définies par userland ?
 export const drawPoint = (
-    type: SelectionTypes,
     renderingContext: CanvasRenderingContext2D,
     coordinates: Coordinates,
     style: AnnotationStyle = defaultStyle,
@@ -137,20 +123,19 @@ export const drawPoint = (
     renderingContext.beginPath();
 
     const { strokeColor, width, outerRadius, innerRadius, fillColor } = style.point;
+    const { shadow } = style.label;
     // stroke and line
     renderingContext.strokeStyle = strokeColor;
     renderingContext.lineWidth = width;
   
     // arc
+    renderingContext.save();
+    applyShadow(renderingContext, shadow);
 
     renderingContext.arc(coordinates.x, coordinates.y, outerRadius, 0, Math.PI * 2, true);
 
     renderingContext.stroke();
-
-    if (type === 'SELECTED' || type === 'UNSELECTED') {
-        renderingContext.strokeStyle = '#000';
-    }
-
+    renderingContext.restore();
     renderingContext.closePath();
 
     renderingContext.beginPath();
@@ -163,41 +148,33 @@ export const drawPoint = (
 
     renderingContext.fill();
 
-    if (type === 'SELECTED' || type === 'UNSELECTED') {
-        renderingContext.strokeStyle = '#000';
-    }
-
     renderingContext.closePath();
 };
 
 export const drawLine = (
-    type: SelectionTypes,
     renderingContext: CanvasRenderingContext2D,
     startCoordinates: Coordinates,
     endCoordinates: Coordinates,
+    style: AnnotationStyle = defaultStyle,
 ): void => {
     renderingContext.beginPath();
 
-    if (type === 'SELECTED') {
-        renderingContext.strokeStyle = '#0053CC';
-    } else if (type === 'UNSELECTED') {
-        renderingContext.strokeStyle = '#FFFFFF';
-        renderingContext.lineCap = 'round';
-    }
+    const { strokeColor, cap, width } = style.line;
+    const { shadow } = style.label;
+    renderingContext.strokeStyle = strokeColor;
+    renderingContext.lineCap = cap;
+    renderingContext.save()
+    applyShadow(renderingContext, shadow);
 
     renderingContext.moveTo(startCoordinates.x, startCoordinates.y);
     renderingContext.lineTo(endCoordinates.x, endCoordinates.y);
-    renderingContext.lineWidth = 2;
+    renderingContext.lineWidth = width;
     renderingContext.stroke();
-
+    renderingContext.restore();
     renderingContext.closePath();
 };
 
-// @Dimitri ou Manu :
-// pour le moment, je n'ai stylisé (et rendu cliquables) que les labels, au survol et à la sélection
-// Prévoit-on dès à présent d'étendre le comportement au clic / survol des formes elles-mêmes
-// ainsi qu'étendre la stylisation aux formes ?
-export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], styledAnnotations: StyleDataByAnnotationId, annotationsPaths: Map<string, AnnotationPathData>): void => {
+export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], styledAnnotations: StyleDataById, annotationsPaths: Map<string, AnnotationPathData>): void => {
     annotations.forEach((annotation) => {
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
@@ -208,10 +185,10 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
             if (previousCoordinates) {
                 if (annotation.isClosed === false) {
                     if (index > 0) {
-                        drawLine('UNSELECTED', renderingContext, previousCoordinates, coordinates);
+                        drawLine(renderingContext, previousCoordinates, coordinates, style);
                     }
                 } else {
-                    drawLine('UNSELECTED', renderingContext, previousCoordinates, coordinates);
+                    drawLine(renderingContext, previousCoordinates, coordinates, style);
                 }
             }
 
@@ -242,13 +219,13 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
         };
 
         const highestPoint = getHighestPoint(annotation.coordinates)
-        const { firstPoint, secondPoint } = getLabelCoordinates(highestPoint);
+        const { firstPoint } = getLabelCoordinates(highestPoint);
 
         if (annotation.coordinates.length === 1) {
-            drawPoint('UNSELECTED', renderingContext, highestPoint, style);
+            drawPoint(renderingContext, highestPoint, style);
         }
 
-        const path = drawLabel(renderingContext, annotation.name, firstPoint, secondPoint, style);
+        const path = drawLabel(renderingContext, annotation.name, firstPoint, style);
         annotationsPaths.set(annotation.id, {label: path});
     });
 };
@@ -257,26 +234,25 @@ export const drawCurrentAnnotation = (
     renderingContext: CanvasRenderingContext2D,
     annotationPoints: Coordinates[],
     isComplete: boolean,
-    annotationHighlightPointIndex?: number,
+    styledPoints: StyleDataById,
+    editStyle: AnnotationStyle,
     currentAnnotation?: Annotation,
 ): void => {
     annotationPoints.forEach((annotationPoint: Coordinates, index: number) => {
-        if (index === annotationHighlightPointIndex) {
-            drawPoint('HIGHLIGHTED', renderingContext, annotationPoint, highlightedStyle);
-        } else {
-            drawPoint('SELECTED', renderingContext, annotationPoint, selectedStyle);
-        }
+
+        const style = overloadStyle(editStyle, styledPoints.get(`${index}`)?.style)
+        drawPoint(renderingContext, annotationPoint, style);
     });
 
     if (annotationPoints.length > 1) {
         for (let i = 1; i < annotationPoints.length; i++) {
-            drawLine('SELECTED', renderingContext, annotationPoints[i - 1], annotationPoints[i]);
+            drawLine(renderingContext, annotationPoints[i - 1], annotationPoints[i], editStyle);
         }
     }
 
     if (isComplete) {
         if (currentAnnotation?.isClosed === true) {
-            drawLine('SELECTED', renderingContext, annotationPoints[annotationPoints.length - 1], annotationPoints[0]);
+            drawLine(renderingContext, annotationPoints[annotationPoints.length - 1], annotationPoints[0], editStyle);
         }
     }
 };

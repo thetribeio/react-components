@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
 import Button from '../button';
 import { Annotation, Coordinates } from './models';
-import { clickStyle, hoverStyle } from './style/stories';
+import { clickStyle, editStyle, highlightStyle, hoverStyle } from './style/stories';
 import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent } from './use-annotation-engine';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
 
@@ -257,6 +257,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
     }
     
     const handleEvent = (event: Events, operations: Operations): void => {
+        operations.setStyleForAnnotationToEdit(editStyle);
         if (isModeInactif()) {
             switch (event.type) {
                 case 'mouse_down_on_label_event':
@@ -274,7 +275,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                     operations.setStyleToAnnotations([annotationIdToStyle], hoverStyle);
                         
                     setHoveredAnnotationsId([annotationIdToStyle]);
-                    const annotationsIdToUnstyle = hoveredAnnotationsId.filter((id) => !annotationIdToStyle.includes(id));
+                    const annotationsIdToUnstyle = hoveredAnnotationsId.filter((id) => id !== annotationIdToStyle);
                     operations.removeStyleFromAnnotationsById(annotationsIdToUnstyle);
    
                     break;
@@ -291,7 +292,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
             switch (event.type) {
                 case 'mouse_move_on_existing_point_event':
                     if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
-                        operations.highlightExistingPoint(0);
+                        operations.setStyleToPoints(['0'], highlightStyle)
                     }
                     break;
                 case 'key_down_event':
@@ -312,7 +313,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                     mouseDownEvent(event, operations);
                     break;
                 case 'mouse_move_event':
-                    operations.removeHighlightPoint();
+                    operations.removeStyleFromPoints();
                     if (state.current.tempPoint !== undefined) {
                         // move point under cursor
                         operations.movePoint(state.current.tempPoint, event.to);

@@ -14,8 +14,6 @@ export interface AnnotationPathData {
     label: Path2D;
 }
 
-export type SelectionTypes = 'UNSELECTED' | 'SELECTED' | 'HIGHLIGHTED';
-
 export type AnnotationStyle = {
     point: {
         innerRadius: number;
@@ -33,14 +31,16 @@ export type AnnotationStyle = {
         textColor: string;
         textAlign: CanvasTextAlign;
         fillColor: string;
-        shadow: {
-            offsetX: number;
-            offsetY: number;
-            blur: number;
-            color: string;
-        };
+        shadow: ShadowStyle;
     };
 }
+
+export type ShadowStyle = {
+    offsetX: number;
+    offsetY: number;
+    blur: number;
+    color: string;
+};
 
 type RecursivePartial<T> = {
     [P in keyof T]?:
@@ -55,4 +55,4 @@ name: string;
 style: PartialAnnotationStyle;
 }
 
-export type StyleDataByAnnotationId = Map<string, StyleData>;
+export type StyleDataById = Map<string, StyleData>;

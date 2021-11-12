@@ -7,13 +7,40 @@ const hoverStyleOptions: PartialAnnotationStyle = {
           color: 'white',
       },
   },
-  line: {
-    strokeColor: 'lightblue',
-  }
 };
+
 const clickStyleOptions: PartialAnnotationStyle = {
   label: {
       fillColor: 'lightblue', 
+  },
+  line: {
+    strokeColor: 'lightblue',
+  },
+  point: {
+    strokeColor: 'lightblue',
+  },
+};
+
+const editStyleOptions: PartialAnnotationStyle = {
+  point: {
+    strokeColor: '#FFFFFF',
+    fillColor: '#0053CC66',
+    outerRadius: 8,
+    innerRadius: 8,
+    width: 1,
+  },
+  line: {
+    strokeColor: '#0053CC',
+  },
+};
+
+export const highlightStyleOptions: PartialAnnotationStyle = {
+  point: {
+    strokeColor: '#FFFFFF95',
+    fillColor: '#0053CC66',
+    width: 2,
+    outerRadius: 14,
+    innerRadius: 12,
   },
 };
 
@@ -25,4 +52,14 @@ export const hoverStyle: StyleData = {
 export const clickStyle: StyleData = {
   style: clickStyleOptions,
   name: 'click',
+};
+
+export const editStyle: StyleData = {
+  style: editStyleOptions,
+  name: 'edit',
+};
+
+export const highlightStyle: StyleData = {
+  style: highlightStyleOptions,
+  name: 'highlight',
 };

@@ -1,6 +1,7 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject, useImperativeHandle, ForwardedRef } from 'react';
-import { Annotation, AnnotationPathData, Coordinates, StyleData, StyleDataByAnnotationId } from './models';
-import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation } from './utils';
+import { Annotation, AnnotationPathData, AnnotationStyle, Coordinates, StyleData, StyleDataById } from './models';
+import defaultStyle from './style/defaultStyleOptions';
+import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation, overloadStyle } from './utils';
 
 interface UseAnnotationEngineArgs {
     annotations: Annotation[];
@@ -109,11 +110,12 @@ export interface KeyDownEvent {
 
 export interface Operations {
     addPoint(at: Coordinates): PointId;
-    highlightExistingPoint(pointId: PointId): void;
-    removeHighlightPoint(): void;
+    setStyleForAnnotationToEdit(annotationStyle: StyleData): void;
     setStyleToAnnotations(annotationsId: string[], stylingData: StyleData): void;
+    setStyleToPoints(pointsId: string[], stylingData: StyleData): void;
     removeStylesFromAnnotationsByStyleNames(styleNames: string[]): void;
     removeStyleFromAnnotationsById(id: string[]): void;
+    removeStyleFromPoints(): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
     drawOnCanvas(draw: (context2d: CanvasRenderingContext2D) => void): void;
@@ -128,9 +130,10 @@ const useAnnotationEngine = ({
 }: UseAnnotationEngineArgs): void => {
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
-    const annotationHighlightPointIndexRef = useRef<number | undefined>(undefined);
-    const styledAnnotations = useRef<StyleDataByAnnotationId>(new Map());
+    const styledAnnotations = useRef<StyleDataById>(new Map());
+    const styledPoints = useRef<StyleDataById>(new Map());
     const annotationsPaths = useRef<Map<string, AnnotationPathData>>(new Map());
+    const annotationToEditStyle = useRef<AnnotationStyle>(defaultStyle)
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
 
     const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
@@ -217,7 +220,8 @@ const useAnnotationEngine = ({
             renderingContextRef.current,
             annotationToEditPointsRef.current,
             annotationToEditPointsRef.current === annotationToEdit?.coordinates,
-            annotationHighlightPointIndexRef.current,
+            styledPoints.current,
+            annotationToEditStyle.current,
             annotationToEdit,
         );
     }, [annotationsToDraw, canvasRef, annotationToEdit]);
@@ -238,15 +242,18 @@ const useAnnotationEngine = ({
         let delayDraw: Array<(context2d: CanvasRenderingContext2D) => void> = [];
         const operations: Operations = {
             addPoint: (at: Coordinates) => annotationToEditPointsRef.current.push(at) - 1,
-            highlightExistingPoint: (pointId: PointId) => {
-                annotationHighlightPointIndexRef.current = pointId;
-            },
-            removeHighlightPoint: () => {
-                annotationHighlightPointIndexRef.current = undefined;
+ 
+            setStyleForAnnotationToEdit: (annotationStyle: StyleData) => {
+                annotationToEditStyle.current = overloadStyle(defaultStyle, annotationStyle.style);
             },
             setStyleToAnnotations: (annotationsId: string[], stylingStatus: StyleData) => {
                 annotationsId.forEach((annotationId) => {
                     styledAnnotations.current.set(annotationId, stylingStatus);
+                })
+            },
+            setStyleToPoints: (pointsId: string[], style: StyleData) => {
+                pointsId.forEach((id) => {
+                    styledPoints.current.set(id, style)
                 })
             },
             removeStylesFromAnnotationsByStyleNames: (styleNames: string[]): void => {
@@ -258,6 +265,9 @@ const useAnnotationEngine = ({
             },
             removeStyleFromAnnotationsById: (annotationsId: string[]): void => {
                 annotationsId.forEach((id) => styledAnnotations.current.delete(id));
+            },
+            removeStyleFromPoints: (): void => {
+                styledPoints.current = new Map();
             },
             movePoint: (pointId: PointId, to: Coordinates) => {
                 annotationToEditPointsRef.current[pointId] = to;

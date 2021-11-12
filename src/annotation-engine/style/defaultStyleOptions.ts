@@ -1,6 +1,6 @@
 import { AnnotationStyle } from "../models";
 
-export const defaultStyle: AnnotationStyle = {
+const defaultStyle: AnnotationStyle = {
   label: {
     textAlign: 'left',
     textColor: '#0053CC',
@@ -26,29 +26,4 @@ export const defaultStyle: AnnotationStyle = {
   },
 }
 
-export const selectedStyle: AnnotationStyle = {
-  ...defaultStyle,
-  point: {
-    strokeColor: '#FFFFFF',
-    fillColor: '#0053CC66',
-    outerRadius: 8,
-    innerRadius: 8,
-    width: 1,
-  },
-  line: {
-    ...defaultStyle.line,
-    strokeColor: '#0053CC',
-  }
-};
-
-
-export const highlightedStyle: AnnotationStyle = {
-  ...defaultStyle,
-  point: {
-    strokeColor: '#FFFFFF95',
-    fillColor: '#0053CC66',
-    width: 2,
-    outerRadius: 14,
-    innerRadius: 12,
-  },
-};
+export default defaultStyle;
