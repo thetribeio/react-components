@@ -260,12 +260,13 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         operations.setStyleForAnnotationToEdit(editStyle);
         if (isModeInactif()) {
             switch (event.type) {
-                case 'mouse_down_on_label_event':
+                case 'mouse_down_on_annotation_event':
                     operations.removeStylesFromAnnotationsByStyleNames([clickStyle.name]);
+                    setLastHoveredAnnotationId('');
                     // FIXME LATER : determine behavior in case of multiple ids
                     operations.setStyleToAnnotations([event.annotationsId[0]], clickStyle);
                     break;
-                case 'mouse_move_on_label_event': {
+                case 'mouse_move_on_annotation_event': {
                     const { annotationsIdsWithStyle } = event;
 
                     const hoveredAnnotationsId = annotationsIdsWithStyle

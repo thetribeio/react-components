@@ -46,14 +46,14 @@ export interface MouseDownOnExistingPointEvent {
 }
 
 export interface MouseDownOnLabelEvent {
-    type: 'mouse_down_on_label_event';
+    type: 'mouse_down_on_annotation_event';
     at: Coordinates;
     annotationsId: string[];
     event: MouseEvent;
 }
 
 export interface MouseMoveOnLabelEvent {
-    type: 'mouse_move_on_label_event';
+    type: 'mouse_move_on_annotation_event';
     at: Coordinates;
     annotationsIdsWithStyle: { id: string, style?: StyleData }[];
     event: MouseEvent;
@@ -146,14 +146,32 @@ const useAnnotationEngine = ({
     };
 
     const getMatchingAnnotationsId = (annotationsPathsMap: AnnotationPathDataById, { x, y }: Coordinates, renderingContext?: CanvasRenderingContext2D,): string[] => {
-        const clickedLabelAnnotationsId: string[] = [];
+        const matchingAnnotationsId: string[] = [];
+        const isPointInPath = (path: Path2D) => renderingContext?.isPointInPath(path, x, y);
+        const isPointInShape = ({label, point, lines}: AnnotationPathData): boolean => {
+
+            if (isPointInPath(label)) {
+                return true;
+            }
+
+            if (point && isPointInPath(point)) {
+                return true;
+            }
+
+            if (lines?.length) {
+                return lines.some((line) => renderingContext?.isPointInStroke(line, x, y))
+            } 
+
+            return false;
+        }
+
         annotationsPathsMap.forEach((annotationPaths, annotationId) => {
-            if (renderingContext?.isPointInPath(annotationPaths.label, x, y)) {
-                clickedLabelAnnotationsId.push(annotationId)
+            if (isPointInShape(annotationPaths)) {
+                matchingAnnotationsId.push(annotationId)
             }
         })
 
-        return clickedLabelAnnotationsId;
+        return matchingAnnotationsId;
     }
 
     const detectClickOnExistingPoints = (coordinates: Array<Coordinates>, clickAt: Coordinates): Array<PointId> =>
@@ -334,7 +352,7 @@ const useAnnotationEngine = ({
                 if (matchingAnnotationsId.length) {
                     return onEvent(
                         {
-                            type: 'mouse_down_on_label_event',
+                            type: 'mouse_down_on_annotation_event',
                             at: eventCoords,
                             event,
                             annotationsId: matchingAnnotationsId,
@@ -388,7 +406,7 @@ const useAnnotationEngine = ({
                     
                     return onEvent(
                         {
-                            type: 'mouse_move_on_label_event',
+                            type: 'mouse_move_on_annotation_event',
                             at: eventCoords,
                             event,
                             annotationsIdsWithStyle,

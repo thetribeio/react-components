@@ -12,6 +12,8 @@ export type Annotation = {
 
 export interface AnnotationPathData {
     label: Path2D;
+    point?: Path2D;
+    lines?: Path2D[];
 }
 
 export type AnnotationStyle = {

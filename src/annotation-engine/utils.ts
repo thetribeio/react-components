@@ -118,9 +118,10 @@ export const drawPoint = (
     renderingContext: CanvasRenderingContext2D,
     coordinates: Coordinates,
     style: AnnotationStyle = defaultStyle,
-): void => {
-    renderingContext.beginPath();
+): Path2D => {
 
+    const pointPath = new Path2D();
+    pointPath.addPath(pointPath);
     const { strokeColor, width, outerRadius, innerRadius, fillColor } = style.point;
     const { shadow } = style.label;
     // stroke and line
@@ -131,23 +132,24 @@ export const drawPoint = (
     renderingContext.save();
     applyShadow(renderingContext, shadow);
 
-    renderingContext.arc(coordinates.x, coordinates.y, outerRadius, 0, Math.PI * 2, true);
+    pointPath.arc(coordinates.x, coordinates.y, outerRadius, 0, Math.PI * 2, true);
 
-    renderingContext.stroke();
+    renderingContext.stroke(pointPath);
+    pointPath.closePath();
     renderingContext.restore();
-    renderingContext.closePath();
-
-    renderingContext.beginPath();
+  
 
     // fill
+    pointPath.addPath(pointPath);
     renderingContext.fillStyle = fillColor;
  
     // arc
-    renderingContext.arc(coordinates.x, coordinates.y, innerRadius, 0, Math.PI * 2, true);
+    pointPath.arc(coordinates.x, coordinates.y, innerRadius, 0, Math.PI * 2, true);
 
-    renderingContext.fill();
+    renderingContext.fill(pointPath);
+    pointPath.closePath();
 
-    renderingContext.closePath();
+    return pointPath;
 };
 
 export const drawLine = (
@@ -155,8 +157,8 @@ export const drawLine = (
     startCoordinates: Coordinates,
     endCoordinates: Coordinates,
     style: AnnotationStyle = defaultStyle,
-): void => {
-    renderingContext.beginPath();
+    shapePath: Path2D = new Path2D()
+): Path2D => {
 
     const { strokeColor, cap, width } = style.line;
     const { shadow } = style.label;
@@ -165,42 +167,27 @@ export const drawLine = (
     renderingContext.save()
     applyShadow(renderingContext, shadow);
 
-    renderingContext.moveTo(startCoordinates.x, startCoordinates.y);
-    renderingContext.lineTo(endCoordinates.x, endCoordinates.y);
+    shapePath.moveTo(startCoordinates.x, startCoordinates.y);
+    shapePath.lineTo(endCoordinates.x, endCoordinates.y);
     renderingContext.lineWidth = width;
-    renderingContext.stroke();
+    renderingContext.stroke(shapePath);
     renderingContext.restore();
-    renderingContext.closePath();
+
+    return shapePath;
 };
 
 export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], styledAnnotations: StyleDataById, annotationsPaths: Map<string, AnnotationPathData>): void => {
     annotations.forEach((annotation) => {
-        let previousCoordinates: Coordinates | undefined =
-            annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
-
-        const style = getStyle(annotation.id, styledAnnotations);
-
-        annotation.coordinates.forEach((coordinates: Coordinates, index: number) => {
-            if (previousCoordinates) {
-                if (annotation.isClosed === false) {
-                    if (index > 0) {
-                        drawLine(renderingContext, previousCoordinates, coordinates, style);
-                    }
-                } else {
-                    drawLine(renderingContext, previousCoordinates, coordinates, style);
-                }
+        const getHighestPoint = (coordinates: Coordinates[]): Coordinates => coordinates.reduce((coord1, coord2) => {
+            if (coord1.y < coord2.y) {
+                return coord1;
             }
 
-            previousCoordinates = coordinates;
+            return coord2;
         });
 
-        const getHighestPoint = (coordinates: Coordinates[]): Coordinates => coordinates.reduce((coord1, coord2) => {
-                if (coord1.y < coord2.y) {
-                    return coord1;
-                }
-
-                return coord2;
-            });
+        const highestPoint = getHighestPoint(annotation.coordinates)
+        const style = getStyle(annotation.id, styledAnnotations);
 
         const getLabelCoordinates = (middlePoint: Coordinates): {firstPoint: Coordinates, secondPoint: Coordinates} => {
             const textSize = renderingContext.measureText(annotation.name);
@@ -217,15 +204,45 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
             });
         };
 
-        const highestPoint = getHighestPoint(annotation.coordinates)
         const { firstPoint } = getLabelCoordinates(highestPoint);
 
+        let pointPath: Path2D;
+
         if (annotation.coordinates.length === 1) {
-            drawPoint(renderingContext, highestPoint, style);
+            pointPath = drawPoint(renderingContext, highestPoint, style);
+
+            const labelPath = drawLabel(renderingContext, annotation.name, firstPoint, style);
+
+            return annotationsPaths.set(annotation.id, {
+                label: labelPath,
+                point: pointPath,
+            });
         }
 
-        const path = drawLabel(renderingContext, annotation.name, firstPoint, style);
-        annotationsPaths.set(annotation.id, {label: path});
+        const linesPath: Path2D[] = [];
+
+        let previousCoordinates: Coordinates | undefined =
+            annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
+
+        annotation.coordinates.forEach((coordinates: Coordinates, index: number) => {
+            if (previousCoordinates) {
+                if (annotation.isClosed === false) {
+                    if (index > 0) {
+                        linesPath.push(drawLine(renderingContext, previousCoordinates, coordinates, style));
+                    }
+                } else {
+                    linesPath.push(drawLine(renderingContext, previousCoordinates, coordinates, style));
+                }
+            }
+            previousCoordinates = coordinates;
+        });
+
+        const labelPath = drawLabel(renderingContext, annotation.name, firstPoint, style);
+
+        return annotationsPaths.set(annotation.id, {
+            label: labelPath,
+            lines: linesPath,
+        });
     });
 };
 
