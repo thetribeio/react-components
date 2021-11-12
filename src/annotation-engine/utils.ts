@@ -16,7 +16,6 @@ export const areCoordinatesInsideCircle = (
     return distance < squareRadius;
 };
 
-// TODO @Laurent : add round egdes to bottom
 export const drawRoundRect = (
     renderingContext: CanvasRenderingContext2D,
     coordinates: Coordinates,

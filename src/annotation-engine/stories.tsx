@@ -271,7 +271,6 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                     const hoveredAnnotationsId = annotationsIdsWithStyle
                         .filter((annotation) => annotation?.style?.name !== clickStyle.name)
                         .map((annotation) => annotation.id);
-                    console.info(hoveredAnnotationsId[0]);
                     const newHoveredAnnotationId = hoveredAnnotationsId[0];
 
                     if (newHoveredAnnotationId) {
