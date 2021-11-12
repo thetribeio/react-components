@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject, useImperativeHandle, ForwardedRef } from 'react';
-import { Annotation, AnnotationPathData, AnnotationStyle, Coordinates, StyleData, StyleDataById } from './models';
+import { Annotation, AnnotationPathData, AnnotationPathDataById, AnnotationStyle, Coordinates, StyleData, StyleDataById } from './models';
 import defaultStyle from './style/defaultStyleOptions';
 import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation, overloadStyle } from './utils';
 
@@ -132,7 +132,7 @@ const useAnnotationEngine = ({
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
     const styledAnnotations = useRef<StyleDataById>(new Map());
     const styledPoints = useRef<StyleDataById>(new Map());
-    const annotationsPaths = useRef<Map<string, AnnotationPathData>>(new Map());
+    const annotationsPaths = useRef<AnnotationPathDataById>(new Map());
     const annotationToEditStyle = useRef<AnnotationStyle>(defaultStyle)
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
 
@@ -145,7 +145,7 @@ const useAnnotationEngine = ({
         };
     };
 
-    const getMatchingAnnotationsId = (annotationsPathsMap: Map<string, AnnotationPathData>, { x, y }: Coordinates, renderingContext?: CanvasRenderingContext2D,): string[] => {
+    const getMatchingAnnotationsId = (annotationsPathsMap: AnnotationPathDataById, { x, y }: Coordinates, renderingContext?: CanvasRenderingContext2D,): string[] => {
         const clickedLabelAnnotationsId: string[] = [];
         annotationsPathsMap.forEach((annotationPaths, annotationId) => {
             if (renderingContext?.isPointInPath(annotationPaths.label, x, y)) {

@@ -56,3 +56,4 @@ style: PartialAnnotationStyle;
 }
 
 export type StyleDataById = Map<string, StyleData>;
+export type AnnotationPathDataById = Map<string, AnnotationPathData>;
