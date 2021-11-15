@@ -10,7 +10,6 @@ export type Annotation = {
     coordinates: Coordinates[];
 };
 
-// TODO diviser en 1 interface mère + 2 extensions ?
 export interface AnnotationPathData {
     label: Path2D;
     point?: Path2D;

@@ -148,7 +148,7 @@ const useAnnotationEngine = ({
     const getMatchingAnnotationsId = (annotationsPathsMap: AnnotationPathDataById, { x, y }: Coordinates, renderingContext?: CanvasRenderingContext2D,): string[] => {
         const matchingAnnotationsId: string[] = [];
         const isPointInPath = (path: Path2D) => renderingContext?.isPointInPath(path, x, y);
-        const isPointInShape = ({label, point, lines}: AnnotationPathData): boolean => {
+        const isPointInShapeOrLabel = ({label, point, lines}: AnnotationPathData): boolean => {
 
             if (isPointInPath(label)) {
                 return true;
@@ -166,7 +166,7 @@ const useAnnotationEngine = ({
         }
 
         annotationsPathsMap.forEach((annotationPaths, annotationId) => {
-            if (isPointInShape(annotationPaths)) {
+            if (isPointInShapeOrLabel(annotationPaths)) {
                 matchingAnnotationsId.push(annotationId)
             }
         })
