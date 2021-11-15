@@ -111,8 +111,8 @@ export interface KeyDownEvent {
 export interface Operations {
     addPoint(at: Coordinates): PointId;
     setStyleForAnnotationToEdit(annotationStyle: StyleData): void;
-    setStyleToAnnotationsByIndices(stylingStatus: StyleData, ...annotationsId: string[]): void;
-    setStyleToPointsByIndices(stylingData: StyleData, ...pointsId: (string | number)[]): void;
+    setStyleToAnnotationsByIndexes(stylingStatus: StyleData, ...annotationsId: string[]): void;
+    setStyleToPointsByIndexes(stylingData: StyleData, ...pointsId: (string | number)[]): void;
     removeStylesFromAnnotationsByStyleNames(...styleNames: string[]): void;
     removeStyleFromAnnotationsById(...id: string[]): void;
     removeStyleFromPoints(): void;
@@ -133,8 +133,8 @@ const useAnnotationEngine = ({
     const styledAnnotations = useRef<StyleDataById>(new Map());
     const styledPoints = useRef<StyleDataById>(new Map());
     const annotationsPaths = useRef<AnnotationPathDataById>(new Map());
-    const annotationToEditStyle = useRef<AnnotationStyle>(defaultStyle)
-    const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 4;
+    const annotationToEditStyle = useRef<AnnotationStyle>(defaultStyle);
+    const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 8;
 
     const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
         const rect = canvas.getBoundingClientRect();
@@ -265,12 +265,12 @@ const useAnnotationEngine = ({
             setStyleForAnnotationToEdit: (annotationStyle: StyleData) => {
                 annotationToEditStyle.current = overloadStyle(defaultStyle, annotationStyle.style);
             },
-            setStyleToAnnotationsByIndices: (stylingStatus: StyleData, ...annotationsId: string[]) => {
+            setStyleToAnnotationsByIndexes: (stylingStatus: StyleData, ...annotationsId: string[]) => {
                 annotationsId.forEach((annotationId) => {
                     styledAnnotations.current.set(annotationId, stylingStatus);
                 })
             },
-            setStyleToPointsByIndices: (style: StyleData, ...pointsId: (string | number)[]) => {
+            setStyleToPointsByIndexes: (style: StyleData, ...pointsId: (string | number)[]) => {
                 pointsId.forEach((id) => {
                     styledPoints.current.set(`${id}`, style)
                 })

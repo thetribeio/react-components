@@ -229,7 +229,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         state.current = initState();
         const id = saveAnnotation(currentGeometry, isShapeClosed);
         operations.removeStylesFromAnnotationsByStyleNames(clickStyle.name)
-        operations.setStyleToAnnotationsByIndices(clickStyle, id)
+        operations.setStyleToAnnotationsByIndexes(clickStyle, id)
     };
 
     const lastValidatedPoint = (currentGeometry: Coordinates[]): PointId => {
@@ -270,7 +270,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                     setCurrentlyHoveredAnnotationId('');
                     setSelectedAnnotationId(event.annotationsId[0]);
                     // FIXME LATER : determine behavior in case of multiple ids
-                    operations.setStyleToAnnotationsByIndices(clickStyle, event.annotationsId[0]);
+                    operations.setStyleToAnnotationsByIndexes(clickStyle, event.annotationsId[0]);
                     break;
                 case 'mouse_move_on_annotation_event': {
                     const { annotationsIdsWithStyle } = event;
@@ -285,7 +285,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                             operations.removeStyleFromAnnotationsById(currentlyHoveredAnnotationId);
                             setCurrentlyHoveredAnnotationId(newHoveredAnnotationId);
                         }
-                        operations.setStyleToAnnotationsByIndices(hoverStyle, newHoveredAnnotationId);
+                        operations.setStyleToAnnotationsByIndexes(hoverStyle, newHoveredAnnotationId);
                     }
 
                     break;
@@ -302,7 +302,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
             switch (event.type) {
                 case 'mouse_move_on_existing_point_event':
                     if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
-                        operations.setStyleToPointsByIndices(highlightStyle, 0)
+                        operations.setStyleToPointsByIndexes(highlightStyle, 0)
                     }
                     break;
                 case 'key_down_event':
