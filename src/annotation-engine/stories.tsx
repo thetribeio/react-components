@@ -1,7 +1,6 @@
-/* eslint-disable jsx-a11y/mouse-events-have-key-events */
 // TODO remove the following eslint rule
+/* eslint-disable jsx-a11y/mouse-events-have-key-events */
 /* eslint-disable jsx-a11y/no-static-element-interactions */
-// eslint-disable-next-line max-classes-per-file
 import { Story, Meta } from '@storybook/react';
 import React, { useEffect, useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
@@ -388,9 +387,12 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
 interface ExternalOperations extends CommonOperations {
     annotationHasStyle(id: string, styleName: string): boolean;
     styledAnnotations: StyleDataById;
-    setStyleToUniqueId(style: StyleData, id: string): void;
+    SetStyleExclusivelyToId(style: StyleData, id: string): void;
 }
 
+/**
+ * Allows to manage canvas drawing styles from outside the canvas 
+ */
 const useExternalOperations = (): ExternalOperations => {
     const [styledAnnotations, setStyledAnnotations] = useState<StyleDataById>(new Map());
 
@@ -412,31 +414,23 @@ const useExternalOperations = (): ExternalOperations => {
         setStyledAnnotations(newStyledAnnotations);
     };
 
-    const removeStylesFromAnnotationsByStyleNames = (...styleNames: string[]): void => {
+    const SetStyleExclusivelyToId = (exclusiveStyle: StyleData, annotationId: string): void => {
         const newStyledAnnotations = new Map(styledAnnotations);
-        newStyledAnnotations.forEach((styleData, id) => {
-            if (styleNames.includes(styleData.name)) {
+        newStyledAnnotations.forEach((style, id) => {
+            if (style.name === exclusiveStyle.name) {
                 newStyledAnnotations.delete(id);
             }
         })
-        setStyledAnnotations(newStyledAnnotations);
-    };
-
-    const setStyleToUniqueId = (style: StyleData, id: string): void => {
-        const newStyledAnnotations = new Map(styledAnnotations);
-        if (newStyledAnnotations.get(id)) {
-            // TODO
-        }
+        newStyledAnnotations.set(annotationId, exclusiveStyle);
         setStyledAnnotations(newStyledAnnotations);
     }
 
     return ({
         setStyleToAnnotationsByIndexes,
         removeStyleFromAnnotationsByIndexes,
-        removeStylesFromAnnotationsByStyleNames,
         annotationHasStyle,
         styledAnnotations,
-        setStyleToUniqueId,
+        SetStyleExclusivelyToId,
     })
 };
 
@@ -459,25 +453,22 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
     } = useEngineStateMachine(availableShapeTypes, annotationToEdit, setAnnotationToEdit, saveAnnotation, refAE, setSelectedAnnotationId);
  
 
-    const {styledAnnotations, setStyleToAnnotationsByIndexes, removeStylesFromAnnotationsByStyleNames, annotationHasStyle, removeStyleFromAnnotationsByIndexes} = useExternalOperations();
+    const {styledAnnotations, setStyleToAnnotationsByIndexes, SetStyleExclusivelyToId, annotationHasStyle, removeStyleFromAnnotationsByIndexes} = useExternalOperations();
 
     const handleMouseEnter = (id: string): void => {
         if (!annotationHasStyle(id, clickStyle.name)) {
             setStyleToAnnotationsByIndexes(hoverStyle, id);
         }
-
     };
+    
     const handleMouseLeave = (id: string): void => {
         if (!annotationHasStyle(id, clickStyle.name)) {
             removeStyleFromAnnotationsByIndexes(id);
         }
-
     };
-    const handleClick = (id: string): void => {
-        // https://ysfaran.github.io/blog/post/0002-use-state-with-promise/
-        // removeStylesFromAnnotationsByStyleNames(clickStyle.name);
-        // setStyleToAnnotationsByIndexes(clickStyle, id);
 
+    const handleClick = (id: string): void => {
+        SetStyleExclusivelyToId(clickStyle, id);
     };
  
     return (

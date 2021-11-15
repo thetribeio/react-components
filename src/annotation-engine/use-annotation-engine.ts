@@ -29,6 +29,7 @@ export type Events =
     | KeyDownEvent
     | MouseUpOnExistingPointEvent
     | MouseWheelEvent;
+    
 export type OnEvent = (event: Events, operations: Operations) => void;
 
 export interface MouseDownEvent {
@@ -111,7 +112,6 @@ export interface KeyDownEvent {
 
 export interface CommonOperations {
     setStyleToAnnotationsByIndexes(styleData: StyleData, ...annotationsId: string[]): void;
-    removeStylesFromAnnotationsByStyleNames(...styleNames: string[]): void;
     removeStyleFromAnnotationsByIndexes(...annotationsId: string[]): void;
 }
 
@@ -119,6 +119,7 @@ export interface Operations extends CommonOperations {
     addPoint(at: Coordinates): PointId;
     setStyleForAnnotationToEdit(annotationStyle: StyleData): void;
     setStyleToPointsByIndexes(styleData: StyleData, ...pointsId: (string | number)[]): void;
+    removeStylesFromAnnotationsByStyleNames(...styleNames: string[]): void;
     removeStyleFromPoints(): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
