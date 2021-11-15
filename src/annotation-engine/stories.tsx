@@ -52,7 +52,7 @@ const Label = styled.label`
 
 type SaveAnnotationFunction = (geometry: Array<Coordinates>, isClosed: boolean) => string;
 
-const useSaveAnnotation = () => {
+const useSaveAnnotation = (setSelectedAnnotationId: React.Dispatch<React.SetStateAction<string>>) => {
     const [annotations, setAnnotations] = useState<Annotation[]>([]);
     const [annotationToEdit, setAnnotationToEdit] = useState<Annotation | undefined>(undefined);
 
@@ -73,6 +73,8 @@ const useSaveAnnotation = () => {
             setAnnotations([...annotations, { id, name: `Mesure ${id}`, coordinates: geometry, isClosed }]);
         }
 
+        setSelectedAnnotationId(id);
+
         return id;
     };
 
@@ -86,11 +88,12 @@ const useSaveAnnotation = () => {
 /**
  * Manages all the necessary states for the Annotation Engine
  */
-const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToEdit: Annotation | undefined, setAnnotationToEdit: React.Dispatch<React.SetStateAction<Annotation | undefined>>, saveAnnotation: SaveAnnotationFunction, refAE: RefObject<Handles>) => {
+const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToEdit: Annotation | undefined, setAnnotationToEdit: React.Dispatch<React.SetStateAction<Annotation | undefined>>, saveAnnotation: SaveAnnotationFunction, refAE: RefObject<Handles>, setSelectedAnnotationId: React.Dispatch<React.SetStateAction<string>>) => {
     const [numberOfPoints, setNumberOfPoints] = useState(0);
     const [shapeType, setShapeType] = useState(availableShapeTypes[0]);
     const [isShapeClosed, setIsShapeClosed] = useState(true);
     const [currentlyHoveredAnnotationId, setCurrentlyHoveredAnnotationId] = useState('');
+    
 
     const isModeEdition = () => annotationToEdit !== undefined;
     const isModeCreation = () => !isModeEdition() && numberOfPoints > 0;
@@ -265,6 +268,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                 case 'mouse_down_on_annotation_event':
                     operations.removeStylesFromAnnotationsByStyleNames(clickStyle.name);
                     setCurrentlyHoveredAnnotationId('');
+                    setSelectedAnnotationId(event.annotationsId[0]);
                     // FIXME LATER : determine behavior in case of multiple ids
                     operations.setStyleToAnnotationsByIndices(clickStyle, event.annotationsId[0]);
                     break;
@@ -375,7 +379,6 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         handleEvent,
         shapeType, setShapeType,
         cancelCreationAndEdition,
-        currentlyHoveredAnnotationId,
     }
 }
 
@@ -383,18 +386,19 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
     const availableShapeTypes: Array<string> = ['INACTIVE', 'POINT', 'LINE', 'POLYGON', 'POLYLINE'];
     const refAE = useRef<Handles>(null);
 
+    const [selectedAnnotationId, setSelectedAnnotationId] = useState('');
+
     const {
         annotations,
         annotationToEdit, setAnnotationToEdit,
         saveAnnotation,
-    } = useSaveAnnotation();
+    } = useSaveAnnotation(setSelectedAnnotationId);
 
     const {
         handleEvent,
         shapeType, setShapeType,
         cancelCreationAndEdition,
-        currentlyHoveredAnnotationId,
-    } = useEngineStateMachine(availableShapeTypes, annotationToEdit, setAnnotationToEdit, saveAnnotation, refAE);
+    } = useEngineStateMachine(availableShapeTypes, annotationToEdit, setAnnotationToEdit, saveAnnotation, refAE, setSelectedAnnotationId);
 
     return (
         <AnnotationsContainer>
@@ -419,7 +423,7 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
             <div style={{ color: 'white' }}>
                 {annotations.map((annotation: Annotation) => (
                     <div key={annotation.id}>
-                        <span style={{color: `${annotation.id === currentlyHoveredAnnotationId ? 'red' : ''}`}}>{annotation.name}{' '}</span>
+                        <span style={{color: `${annotation.id === selectedAnnotationId ? 'red' : ''}`}}>{annotation.name}{' '}</span>
                         <button onClick={() => setAnnotationToEdit(annotation)} type="button">
                             EDIT
                         </button>
