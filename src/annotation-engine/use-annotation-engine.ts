@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useCallback, RefObject, useImperativeHandle, ForwardedRef } from 'react';
-import { Annotation, AnnotationPathData, AnnotationPathDataById, AnnotationStyle, Coordinates, StyleData, StyleDataById } from './models';
+import { Annotation, PointAnnotationPathData, AnnotationPathDataById, AnnotationStyle, Coordinates, StyleData, StyleDataById, AnnotationPathData } from './models';
 import defaultStyle from './style/defaultStyleOptions';
 import { areCoordinatesInsideCircle, drawAnnotations, drawCurrentAnnotation, overloadStyle } from './utils';
 
@@ -148,18 +148,19 @@ const useAnnotationEngine = ({
     const getMatchingAnnotationsId = (annotationsPathsMap: AnnotationPathDataById, { x, y }: Coordinates, renderingContext?: CanvasRenderingContext2D,): string[] => {
         const matchingAnnotationsId: string[] = [];
         const isPointInPath = (path: Path2D) => renderingContext?.isPointInPath(path, x, y);
-        const isPointInShapeOrLabel = ({label, point, lines}: AnnotationPathData): boolean => {
+        const isPointAnnotation = (pathData: AnnotationPathData): pathData is PointAnnotationPathData => (pathData as PointAnnotationPathData).point !== undefined;
+        const isPointInShapeOrLabel = (pathData: AnnotationPathData): boolean => {
 
-            if (isPointInPath(label)) {
+            if (isPointInPath(pathData.label)) {
                 return true;
             }
 
-            if (point && isPointInPath(point)) {
+            if (isPointAnnotation(pathData) && isPointInPath(pathData.point)) {
                 return true;
             }
 
-            if (lines?.length) {
-                return lines.some((line) => renderingContext?.isPointInStroke(line, x, y))
+            if (!isPointAnnotation(pathData)) {
+                return pathData.lines.some((line) => renderingContext?.isPointInStroke(line, x, y))
             } 
 
             return false;

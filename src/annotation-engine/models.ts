@@ -10,11 +10,19 @@ export type Annotation = {
     coordinates: Coordinates[];
 };
 
-export interface AnnotationPathData {
+interface LabelPathData {
     label: Path2D;
-    point?: Path2D;
-    lines?: Path2D[];
 }
+
+export interface PointAnnotationPathData extends LabelPathData {
+    point: Path2D;
+}
+
+export interface LinearAnnotationPathData extends LabelPathData {
+    lines: Path2D[];
+}
+
+export type AnnotationPathData = PointAnnotationPathData | LinearAnnotationPathData;
 
 export type AnnotationStyle = {
     point: {
