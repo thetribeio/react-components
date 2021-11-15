@@ -1,11 +1,14 @@
+/* eslint-disable jsx-a11y/mouse-events-have-key-events */
+// TODO remove the following eslint rule
+/* eslint-disable jsx-a11y/no-static-element-interactions */
 // eslint-disable-next-line max-classes-per-file
 import { Story, Meta } from '@storybook/react';
 import React, { useEffect, useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
 import Button from '../button';
-import { Annotation, Coordinates } from './models';
+import { Annotation, Coordinates, StyleData, StyleDataById } from './models';
 import { clickStyle, editStyle, highlightStyle, hoverStyle } from './style/stories';
-import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent } from './use-annotation-engine';
+import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent, CommonOperations } from './use-annotation-engine';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
 
 export default {
@@ -282,7 +285,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
 
                     if (newHoveredAnnotationId) {
                         if (currentlyHoveredAnnotationId !== newHoveredAnnotationId) {
-                            operations.removeStyleFromAnnotationsById(currentlyHoveredAnnotationId);
+                            operations.removeStyleFromAnnotationsByIndexes(currentlyHoveredAnnotationId);
                             setCurrentlyHoveredAnnotationId(newHoveredAnnotationId);
                         }
                         operations.setStyleToAnnotationsByIndexes(hoverStyle, newHoveredAnnotationId);
@@ -381,6 +384,61 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         cancelCreationAndEdition,
     }
 }
+  
+interface ExternalOperations extends CommonOperations {
+    annotationHasStyle(id: string, styleName: string): boolean;
+    styledAnnotations: StyleDataById;
+    setStyleToUniqueId(style: StyleData, id: string): void;
+}
+
+const useExternalOperations = (): ExternalOperations => {
+    const [styledAnnotations, setStyledAnnotations] = useState<StyleDataById>(new Map());
+
+    const annotationHasStyle = (id: string, styleName: string): boolean => Boolean(styledAnnotations.get(id)?.name === styleName);
+
+    const setStyleToAnnotationsByIndexes = (style: StyleData, ...annotationsId: string[]): void => {
+        const newStyledAnnotations = new Map(styledAnnotations);
+        annotationsId.forEach((id) => {
+            newStyledAnnotations.set(id, style);
+        })
+        setStyledAnnotations(newStyledAnnotations);
+    };
+
+    const removeStyleFromAnnotationsByIndexes = (...annotationsId: string[]): void => {
+        const newStyledAnnotations = new Map(styledAnnotations);
+        annotationsId.forEach((id) => {
+            newStyledAnnotations.delete(id);
+        })
+        setStyledAnnotations(newStyledAnnotations);
+    };
+
+    const removeStylesFromAnnotationsByStyleNames = (...styleNames: string[]): void => {
+        const newStyledAnnotations = new Map(styledAnnotations);
+        newStyledAnnotations.forEach((styleData, id) => {
+            if (styleNames.includes(styleData.name)) {
+                newStyledAnnotations.delete(id);
+            }
+        })
+        setStyledAnnotations(newStyledAnnotations);
+    };
+
+    const setStyleToUniqueId = (style: StyleData, id: string): void => {
+        const newStyledAnnotations = new Map(styledAnnotations);
+        if (newStyledAnnotations.get(id)) {
+            // TODO
+        }
+        setStyledAnnotations(newStyledAnnotations);
+    }
+
+    return ({
+        setStyleToAnnotationsByIndexes,
+        removeStyleFromAnnotationsByIndexes,
+        removeStylesFromAnnotationsByStyleNames,
+        annotationHasStyle,
+        styledAnnotations,
+        setStyleToUniqueId,
+    })
+};
 
 const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
     const availableShapeTypes: Array<string> = ['INACTIVE', 'POINT', 'LINE', 'POLYGON', 'POLYLINE'];
@@ -399,7 +457,29 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
         shapeType, setShapeType,
         cancelCreationAndEdition,
     } = useEngineStateMachine(availableShapeTypes, annotationToEdit, setAnnotationToEdit, saveAnnotation, refAE, setSelectedAnnotationId);
+ 
 
+    const {styledAnnotations, setStyleToAnnotationsByIndexes, removeStylesFromAnnotationsByStyleNames, annotationHasStyle, removeStyleFromAnnotationsByIndexes} = useExternalOperations();
+
+    const handleMouseEnter = (id: string): void => {
+        if (!annotationHasStyle(id, clickStyle.name)) {
+            setStyleToAnnotationsByIndexes(hoverStyle, id);
+        }
+
+    };
+    const handleMouseLeave = (id: string): void => {
+        if (!annotationHasStyle(id, clickStyle.name)) {
+            removeStyleFromAnnotationsByIndexes(id);
+        }
+
+    };
+    const handleClick = (id: string): void => {
+        // https://ysfaran.github.io/blog/post/0002-use-state-with-promise/
+        // removeStylesFromAnnotationsByStyleNames(clickStyle.name);
+        // setStyleToAnnotationsByIndexes(clickStyle, id);
+
+    };
+ 
     return (
         <AnnotationsContainer>
             <StyledAnnotationEngine
@@ -409,6 +489,7 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
                 ref={refAE}
                 annotationToEdit={annotationToEdit}
                 annotations={annotations}
+                annotationsToStyle={styledAnnotations}
                 onEvent={handleEvent}
             />
             <ActionContainer>
@@ -423,8 +504,17 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
             <div style={{ color: 'white' }}>
                 {annotations.map((annotation: Annotation) => (
                     <div key={annotation.id}>
-                        <span style={{color: `${annotation.id === selectedAnnotationId ? 'red' : ''}`}}>{annotation.name}{' '}</span>
-                        <button onClick={() => setAnnotationToEdit(annotation)} type="button">
+                       { /* eslint-disable-next-line jsx-a11y/click-events-have-key-events */}
+                        <span 
+                            onClick={() => handleClick(annotation.id)}
+                            onMouseEnter={() => handleMouseEnter(annotation.id)}
+                            onMouseLeave={() => handleMouseLeave(annotation.id)}
+                            style={{color: `${annotation.id === selectedAnnotationId ? 'red' : ''}`}}
+                        >{annotation.name}{' '}</span>
+                        <button onClick={() => {
+                            setAnnotationToEdit(annotation);
+                            setSelectedAnnotationId('');
+                        }} type="button">
                             EDIT
                         </button>
                     </div>

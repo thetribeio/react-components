@@ -9,6 +9,7 @@ interface UseAnnotationEngineArgs {
     onEvent: OnEvent;
     canvasRef: RefObject<HTMLCanvasElement>;
     ref: ForwardedRef<Handles>;
+    annotationsToStyle: StyleDataById;
 }
 
 export interface Handles {
@@ -108,13 +109,16 @@ export interface KeyDownEvent {
     event: KeyboardEvent;
 }
 
-export interface Operations {
+export interface CommonOperations {
+    setStyleToAnnotationsByIndexes(styleData: StyleData, ...annotationsId: string[]): void;
+    removeStylesFromAnnotationsByStyleNames(...styleNames: string[]): void;
+    removeStyleFromAnnotationsByIndexes(...annotationsId: string[]): void;
+}
+
+export interface Operations extends CommonOperations {
     addPoint(at: Coordinates): PointId;
     setStyleForAnnotationToEdit(annotationStyle: StyleData): void;
-    setStyleToAnnotationsByIndexes(stylingStatus: StyleData, ...annotationsId: string[]): void;
-    setStyleToPointsByIndexes(stylingData: StyleData, ...pointsId: (string | number)[]): void;
-    removeStylesFromAnnotationsByStyleNames(...styleNames: string[]): void;
-    removeStyleFromAnnotationsById(...id: string[]): void;
+    setStyleToPointsByIndexes(styleData: StyleData, ...pointsId: (string | number)[]): void;
     removeStyleFromPoints(): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
@@ -127,10 +131,11 @@ const useAnnotationEngine = ({
     onEvent,
     canvasRef,
     ref,
+    annotationsToStyle,
 }: UseAnnotationEngineArgs): void => {
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
-    const styledAnnotations = useRef<StyleDataById>(new Map());
+    const styledAnnotations = useRef<StyleDataById>(annotationsToStyle);
     const styledPoints = useRef<StyleDataById>(new Map());
     const annotationsPaths = useRef<AnnotationPathDataById>(new Map());
     const annotationToEditStyle = useRef<AnnotationStyle>(defaultStyle);
@@ -257,22 +262,23 @@ const useAnnotationEngine = ({
     // Initialize canvas
     useEffect(() => {
         const currentCanvasRef = canvasRef.current;
+        styledAnnotations.current = annotationsToStyle;
 
         let delayDraw: Array<(context2d: CanvasRenderingContext2D) => void> = [];
         const operations: Operations = {
             addPoint: (at: Coordinates) => annotationToEditPointsRef.current.push(at) - 1,
  
-            setStyleForAnnotationToEdit: (annotationStyle: StyleData) => {
-                annotationToEditStyle.current = overloadStyle(defaultStyle, annotationStyle.style);
+            setStyleForAnnotationToEdit: (styleData: StyleData) => {
+                annotationToEditStyle.current = overloadStyle(defaultStyle, styleData.style);
             },
-            setStyleToAnnotationsByIndexes: (stylingStatus: StyleData, ...annotationsId: string[]) => {
+            setStyleToAnnotationsByIndexes: (styleData: StyleData, ...annotationsId: string[]) => {
                 annotationsId.forEach((annotationId) => {
-                    styledAnnotations.current.set(annotationId, stylingStatus);
+                    styledAnnotations.current.set(annotationId, styleData);
                 })
             },
-            setStyleToPointsByIndexes: (style: StyleData, ...pointsId: (string | number)[]) => {
+            setStyleToPointsByIndexes: (styleData: StyleData, ...pointsId: (string | number)[]) => {
                 pointsId.forEach((id) => {
-                    styledPoints.current.set(`${id}`, style)
+                    styledPoints.current.set(`${id}`, styleData)
                 })
             },
             removeStylesFromAnnotationsByStyleNames: (...styleNames: string[]): void => {
@@ -282,7 +288,7 @@ const useAnnotationEngine = ({
                     }
                 })
             },
-            removeStyleFromAnnotationsById: (...annotationsId: string[]): void => {
+            removeStyleFromAnnotationsByIndexes: (...annotationsId: string[]): void => {
                 annotationsId.forEach((id) => styledAnnotations.current.delete(id));
             },
             removeStyleFromPoints: (): void => {
@@ -511,7 +517,7 @@ const useAnnotationEngine = ({
                 document.removeEventListener('keydown', handleKeyDown);
             }
         };
-    }, [drawScene, canvasRef, onEvent, annotations]);
+    }, [drawScene, canvasRef, onEvent, annotations, annotationsToStyle]);
 };
 
 export default useAnnotationEngine;

@@ -1,5 +1,5 @@
 import React, { FC, forwardRef, ForwardedRef, useRef } from 'react';
-import { Annotation } from './models';
+import { Annotation, StyleDataById } from './models';
 import Canvas from './style/canvas';
 import Container from './style/container';
 import Image from './style/image';
@@ -13,6 +13,7 @@ export interface AnnotationEngineProps {
     foregroundImagePath?: string;
     id?: string;
     onEvent: OnEvent;
+    annotationsToStyle: StyleDataById;
 }
 
 const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
@@ -25,6 +26,7 @@ const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
             foregroundImagePath,
             id = 'annotation-engine',
             onEvent,
+            annotationsToStyle,
         },
         ref: ForwardedRef<Handles>,
     ) => {
@@ -37,6 +39,7 @@ const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
             onEvent,
             canvasRef: cRef,
             ref,
+            annotationsToStyle,
         });
 
         return (
