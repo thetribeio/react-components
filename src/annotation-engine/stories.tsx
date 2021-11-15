@@ -375,6 +375,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         handleEvent,
         shapeType, setShapeType,
         cancelCreationAndEdition,
+        currentlyHoveredAnnotationId,
     }
 }
 
@@ -392,6 +393,7 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
         handleEvent,
         shapeType, setShapeType,
         cancelCreationAndEdition,
+        currentlyHoveredAnnotationId,
     } = useEngineStateMachine(availableShapeTypes, annotationToEdit, setAnnotationToEdit, saveAnnotation, refAE);
 
     return (
@@ -417,7 +419,7 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
             <div style={{ color: 'white' }}>
                 {annotations.map((annotation: Annotation) => (
                     <div key={annotation.id}>
-                        {annotation.name}{' '}
+                        <span style={{color: `${annotation.id === currentlyHoveredAnnotationId ? 'red' : ''}`}}>{annotation.name}{' '}</span>
                         <button onClick={() => setAnnotationToEdit(annotation)} type="button">
                             EDIT
                         </button>
