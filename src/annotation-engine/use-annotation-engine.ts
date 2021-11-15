@@ -112,7 +112,7 @@ export interface Operations {
     addPoint(at: Coordinates): PointId;
     setStyleForAnnotationToEdit(annotationStyle: StyleData): void;
     setStyleToAnnotations(annotationsId: string[], stylingData: StyleData): void;
-    setStyleToPointsByIndex(pointsId: string[], stylingData: StyleData): void;
+    setStyleToPointsByIndices(stylingData: StyleData, ...pointsId: (string | number)[]): void;
     removeStylesFromAnnotationsByStyleNames(styleNames: string[]): void;
     removeStyleFromAnnotationsById(id: string[]): void;
     removeStyleFromPoints(): void;
@@ -269,9 +269,9 @@ const useAnnotationEngine = ({
                     styledAnnotations.current.set(annotationId, stylingStatus);
                 })
             },
-            setStyleToPointsByIndex: (pointsId: string[], style: StyleData) => {
+            setStyleToPointsByIndices: (style: StyleData, ...pointsId: (string | number)[]) => {
                 pointsId.forEach((id) => {
-                    styledPoints.current.set(id, style)
+                    styledPoints.current.set(`${id}`, style)
                 })
             },
             removeStylesFromAnnotationsByStyleNames: (styleNames: string[]): void => {

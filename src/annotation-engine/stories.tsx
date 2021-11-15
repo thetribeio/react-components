@@ -296,7 +296,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
             switch (event.type) {
                 case 'mouse_move_on_existing_point_event':
                     if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
-                        operations.setStyleToPointsByIndex(['0'], highlightStyle)
+                        operations.setStyleToPointsByIndices(highlightStyle, 0)
                     }
                     break;
                 case 'key_down_event':
