@@ -225,8 +225,8 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         operations.finishCurrentLine();
         state.current = initState();
         const id = saveAnnotation(currentGeometry, isShapeClosed);
-        operations.removeStylesFromAnnotationsByStyleNames([clickStyle.name])
-        operations.setStyleToAnnotations([id], clickStyle)
+        operations.removeStylesFromAnnotationsByStyleNames(clickStyle.name)
+        operations.setStyleToAnnotationsByIndices(clickStyle, id)
     };
 
     const lastValidatedPoint = (currentGeometry: Coordinates[]): PointId => {
@@ -260,11 +260,13 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         operations.setStyleForAnnotationToEdit(editStyle);
         if (isModeInactif()) {
             switch (event.type) {
+                // TODO mettre annotation cliquée à la fin dans le tableau
+                // pour que son label soit au-dessus, si collision
                 case 'mouse_down_on_annotation_event':
-                    operations.removeStylesFromAnnotationsByStyleNames([clickStyle.name]);
+                    operations.removeStylesFromAnnotationsByStyleNames(clickStyle.name);
                     setCurrentlyHoveredAnnotationId('');
                     // FIXME LATER : determine behavior in case of multiple ids
-                    operations.setStyleToAnnotations([event.annotationsId[0]], clickStyle);
+                    operations.setStyleToAnnotationsByIndices(clickStyle, event.annotationsId[0]);
                     break;
                 case 'mouse_move_on_annotation_event': {
                     const { annotationsIdsWithStyle } = event;
@@ -276,17 +278,17 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
 
                     if (newHoveredAnnotationId) {
                         if (currentlyHoveredAnnotationId !== newHoveredAnnotationId) {
-                            operations.removeStyleFromAnnotationsById([currentlyHoveredAnnotationId]);
+                            operations.removeStyleFromAnnotationsById(currentlyHoveredAnnotationId);
                             setCurrentlyHoveredAnnotationId(newHoveredAnnotationId);
                         }
-                        operations.setStyleToAnnotations([newHoveredAnnotationId], hoverStyle);
+                        operations.setStyleToAnnotationsByIndices(hoverStyle, newHoveredAnnotationId);
                     }
 
                     break;
                 }
                 case 'mouse_move_event':
                     setCurrentlyHoveredAnnotationId('');
-                    operations.removeStylesFromAnnotationsByStyleNames([hoverStyle.name]);
+                    operations.removeStylesFromAnnotationsByStyleNames(hoverStyle.name);
                     break;
                 default:
                     break;

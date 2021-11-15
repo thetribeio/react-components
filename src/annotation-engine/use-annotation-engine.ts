@@ -111,10 +111,10 @@ export interface KeyDownEvent {
 export interface Operations {
     addPoint(at: Coordinates): PointId;
     setStyleForAnnotationToEdit(annotationStyle: StyleData): void;
-    setStyleToAnnotations(annotationsId: string[], stylingData: StyleData): void;
+    setStyleToAnnotationsByIndices(stylingStatus: StyleData, ...annotationsId: string[]): void;
     setStyleToPointsByIndices(stylingData: StyleData, ...pointsId: (string | number)[]): void;
-    removeStylesFromAnnotationsByStyleNames(styleNames: string[]): void;
-    removeStyleFromAnnotationsById(id: string[]): void;
+    removeStylesFromAnnotationsByStyleNames(...styleNames: string[]): void;
+    removeStyleFromAnnotationsById(...id: string[]): void;
     removeStyleFromPoints(): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
@@ -264,7 +264,7 @@ const useAnnotationEngine = ({
             setStyleForAnnotationToEdit: (annotationStyle: StyleData) => {
                 annotationToEditStyle.current = overloadStyle(defaultStyle, annotationStyle.style);
             },
-            setStyleToAnnotations: (annotationsId: string[], stylingStatus: StyleData) => {
+            setStyleToAnnotationsByIndices: (stylingStatus: StyleData, ...annotationsId: string[]) => {
                 annotationsId.forEach((annotationId) => {
                     styledAnnotations.current.set(annotationId, stylingStatus);
                 })
@@ -274,14 +274,14 @@ const useAnnotationEngine = ({
                     styledPoints.current.set(`${id}`, style)
                 })
             },
-            removeStylesFromAnnotationsByStyleNames: (styleNames: string[]): void => {
+            removeStylesFromAnnotationsByStyleNames: (...styleNames: string[]): void => {
                 styledAnnotations.current.forEach((styleData, annotationId, styledAnnotationsMap) => {
                     if (styleNames.includes(styleData.name)) {
                         styledAnnotationsMap.delete(annotationId);
                     }
                 })
             },
-            removeStyleFromAnnotationsById: (annotationsId: string[]): void => {
+            removeStyleFromAnnotationsById: (...annotationsId: string[]): void => {
                 annotationsId.forEach((id) => styledAnnotations.current.delete(id));
             },
             removeStyleFromPoints: (): void => {
