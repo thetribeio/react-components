@@ -3,8 +3,8 @@ import React, { useEffect, useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
 import Button from '../button';
 import { Annotation, Coordinates, StyleData, StyleDataById } from './models';
-import { clickStyle, editStyle, highlightStyle, hoverStyle } from './style/stories';
-import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent } from './use-annotation-engine';
+import { clickStyle, editStyle, hiddenStyle, highlightStyle, hoverStyle } from './style/stories';
+import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent, MouseUp } from './use-annotation-engine';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
 
 export default {
@@ -118,11 +118,11 @@ const useEngineStateMachine = (
 
     const initState = () => ({
         dragPoint: undefined,
-        tempPoint: undefined,
+        tempPointIndex: 0,
     });
     const state = useRef<{
         dragPoint: PointId | undefined,
-        tempPoint: PointId | undefined,
+        tempPointIndex: PointId,
     }>(initState());
 
     const cancelCreationAndEdition = () => {
@@ -182,9 +182,10 @@ const useEngineStateMachine = (
     const isGeometryComplete = (length: number) => {
         switch (shapeType) {
             case 'POINT':
+                return length === 1;
             case 'LINE':
+                return length === 2;
             default:
-                return length >= numberOfPoints + (state.current.tempPoint !== undefined ? 1 : 0);
             case 'POLYGON':
             case 'POLYLINE':
                 return false;
@@ -199,9 +200,9 @@ const useEngineStateMachine = (
             case 'LINE':
                 return isModeEdition();
             case 'POLYGON':
-                return length - (state.current.tempPoint !== undefined ? 1 : 0) >= 3;
+                return length - (state.current.tempPointIndex !== undefined ? 1 : 0) >= 3;
             case 'POLYLINE':
-                return length - (state.current.tempPoint !== undefined ? 1 : 0) >= 2;
+                return length - (state.current.tempPointIndex !== undefined ? 1 : 0) >= 2;
             default:
                 return false;
         }
@@ -223,31 +224,32 @@ const useEngineStateMachine = (
     }
 
     const createNewPoint = (at: Coordinates, currentGeometry: Coordinates[], operations: Operations) => {
-        if (state.current.tempPoint === undefined) {
+        if (state.current.tempPointIndex === 0) {
             // First point
             operations.addPoint(at);
         }
         if (!isGeometryComplete(currentGeometry.length + 1)) {
             // Create next point ahead & validate current point
-            state.current.tempPoint = operations.addPoint(at);
+
+            // # tempPointIndex contains the index of the last point
+            state.current.tempPointIndex = operations.addPoint(at);
         } else {
             // just validate last point
-            state.current.tempPoint = undefined;
+            state.current.tempPointIndex = 0;
         }
+        // operations.setStyleToPointsByIndexes(hiddenStyle, state.current.tempPointIndex ?? 1);
     };
 
     const shapeFinished = (currentGeometry: Coordinates[], operations: Operations) => {
-        if (state.current.tempPoint) {
-            currentGeometry.splice(state.current.tempPoint, 1);
-        }
-        operations.finishCurrentLine();
+        // currentGeometry.splice(state.current.tempPointIndex, 1);
+        // operations.finishCurrentLine();
         state.current = initState();
         const id = saveAnnotation(currentGeometry, isShapeClosed);
         setStyleExclusivelyToId(clickStyle, id)
     };
 
     const lastValidatedPoint = (currentGeometry: Coordinates[]): PointId => {
-        if (state.current.tempPoint === currentGeometry.length - 1) {
+        if (state.current.tempPointIndex === currentGeometry.length - 1) {
             return currentGeometry.length - 2;
         }
 
@@ -270,11 +272,21 @@ const useEngineStateMachine = (
     }
 
     const mouseDownEvent = (event: MouseDownEvent | MouseDownOnExistingPointEvent, operations: Operations) => {
+        // operations.removeStyleFromPointsByStyleNames(hiddenStyle.name);
+    }
+    
+    const mouseUpEvent = (event: MouseUp, operations: Operations) => {
+        console.info(event.currentGeometry);
+        if (isGeometryComplete(event.currentGeometry.length)) {
+            return shapeFinished(event.currentGeometry, operations);
+        }
         createNewPoint(event.at, event.currentGeometry, operations);
+        console.info(event.currentGeometry.length)
     }
     
     const handleEvent = (event: Events, operations: Operations): void => {
         operations.setStyleForAnnotationToEdit(editStyle);
+        // operations.setStyleToPointsByIndexes(hiddenStyle, state.current.tempPointIndex);
         if (isModeInactif()) {
             switch (event.type) {
                 // TODO mettre annotation cliquée à la fin dans le tableau
@@ -315,6 +327,7 @@ const useEngineStateMachine = (
         if (isModeCreation()) {
             switch (event.type) {
                 case 'mouse_move_on_existing_point_event':
+                    // # console.info('current geometry', event.currentGeometry, 'point ids', event.pointIds);
                     if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
                         operations.setStyleToPointsByIndexes(highlightStyle, 0)
                     }
@@ -328,33 +341,27 @@ const useEngineStateMachine = (
                 case 'mouse_down_event':
                     mouseDownEvent(event, operations);
                     break;
-                case 'mouse_down_on_existing_point_event':
-                    if (event.type === 'mouse_down_on_existing_point_event'
-                        && isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
-                        shapeFinished(event.currentGeometry, operations);
-                        break;
-                    }
-                    mouseDownEvent(event, operations);
-                    break;
                 case 'mouse_move_event':
-                    operations.removeStyleFromPoints();
-                    if (state.current.tempPoint !== undefined) {
+                    operations.removeStyleFromPointsByStyleNames(highlightStyle.name);
+                    if (state.current.tempPointIndex !== undefined) {
                         // move point under cursor
-                        operations.movePoint(state.current.tempPoint, event.to);
+                        operations.movePoint(state.current.tempPointIndex, event.to);
                     }
                     break;
                 case 'mouse_up_on_existing_point_event':
-                    if (!stillOnPreviousPoint(event.pointIds, event.currentGeometry)) {
-                        createNewPoint(event.at, event.currentGeometry, operations);
-                    }
-                    if (isGeometryComplete(event.currentGeometry.length)) {
+                    if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
                         shapeFinished(event.currentGeometry, operations);
+                        break;
                     }
+                    // if (!stillOnPreviousPoint(event.pointIds, event.currentGeometry)) {
+                    //     createNewPoint(event.at, event.currentGeometry, operations);
+                    // }
+                    // if (isGeometryComplete(event.currentGeometry.length)) {
+                    //     shapeFinished(event.currentGeometry, operations);
+                    // }
                     break;
                 case 'mouse_up_event':
-                    if (isGeometryComplete(event.currentGeometry.length)) {
-                        shapeFinished(event.currentGeometry, operations);
-                    }
+                    mouseUpEvent(event, operations);
                     break;
                 default:
                     // nothing to do
@@ -463,8 +470,6 @@ const useStyleOperations = (): StyleOperations => {
 const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
     const availableShapeTypes: Array<string> = ['INACTIVE', 'POINT', 'LINE', 'POLYGON', 'POLYLINE'];
     const refAE = useRef<Handles>(null);
-
-    
     const styleOps = useStyleOperations();
 
     const {
@@ -480,8 +485,15 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
         handleEvent,
         shapeType, setShapeType,
         cancelCreationAndEdition,
-    } = useEngineStateMachine(availableShapeTypes, annotationToEdit, setAnnotationToEdit, saveAnnotation, refAE, setSelectedAnnotationId, styleOps);
-    
+    } = useEngineStateMachine(
+            availableShapeTypes,
+            annotationToEdit,
+            setAnnotationToEdit,
+            saveAnnotation, 
+            refAE,
+            setSelectedAnnotationId,
+            styleOps
+        );
 
     const { 
         styledAnnotations,
@@ -498,7 +510,6 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
     };
     
     const handleMouseLeave = (id: string): void => {
-        
         if (!annotationHasStyle(id, clickStyle.name)) {
             removeStyleFromAnnotationsByIndexes(id);
         }

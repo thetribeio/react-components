@@ -44,6 +44,13 @@ export const highlightStyleOptions: PartialAnnotationStyle = {
   },
 };
 
+export const hiddenStyleOptions: PartialAnnotationStyle = {
+  point: {
+    strokeColor: 'transparent',
+    fillColor: 'transparent',
+  }
+}
+
 export const hoverStyle: StyleData = {
   style: hoverStyleOptions,
   name: 'hover',
@@ -63,3 +70,8 @@ export const highlightStyle: StyleData = {
   style: highlightStyleOptions,
   name: 'highlight',
 };
+
+export const hiddenStyle: StyleData = {
+  style: hiddenStyleOptions,
+  name: 'hidden',
+}

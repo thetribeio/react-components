@@ -248,13 +248,20 @@ export const drawCurrentAnnotation = (
     isComplete: boolean,
     styledPoints: StyleDataById,
     editStyle: AnnotationStyle,
+    tempPoint?: Coordinates,
     currentAnnotation?: Annotation,
 ): void => {
+
+    console.info('in draw current anno : annoToEdit points : ', annotationPoints);
     annotationPoints.forEach((annotationPoint: Coordinates, index: number) => {
         const style = overloadStyle(editStyle, styledPoints.get(`${index}`)?.style)
         drawPoint(renderingContext, annotationPoint, style);
     });
 
+    if ( !isComplete && annotationPoints.length > 0 && tempPoint) {
+        drawLine(renderingContext, annotationPoints[annotationPoints.length - 1], tempPoint, editStyle);
+        
+    }
     if (annotationPoints.length > 1) {
         for (let i = 1; i < annotationPoints.length; i++) {
             drawLine(renderingContext, annotationPoints[i - 1], annotationPoints[i], editStyle);
