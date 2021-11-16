@@ -115,7 +115,7 @@ export interface Operations {
     setStyleForAnnotationToEdit(annotationStyle: StyleData): void;
     setStyleToPointsByIndexes(styleData: StyleData, ...pointsId: (string | number)[]): void;
     removeStyleFromPointsByStyleNames(...styleNames: string[]): void;
-    movePoint(pointId: PointId, to: Coordinates): void;
+    movePoint(pointId: PointId, to: Coordinates, isEdition?: boolean): void;
     finishCurrentLine(): void;
     drawOnCanvas(draw: (context2d: CanvasRenderingContext2D) => void): void;
 }
@@ -197,7 +197,7 @@ const useAnnotationEngine = ({
 
     useEffect(() => {
         // #
-        console.info('anno to edit points', annotationToEdit?.coordinates);
+        // console.info('anno to edit points', annotationToEdit?.coordinates);
         annotationsPaths.current.forEach((_annotationPath: AnnotationPathData, id: string) => {
             if (!annotations.map((anno) => anno.id).includes(id)) {
                 annotationsPaths.current.delete(id);
@@ -283,10 +283,14 @@ const useAnnotationEngine = ({
                 })
                 styledPoints.current = newStyledPoints;
             },
-            movePoint: (pointId: PointId, to: Coordinates) => {
+            movePoint: (pointId: PointId, to: Coordinates, isEdition = false) => {
                 //! ICI !
-                tempPointRef.current = to;
-                // annotationToEditPointsRef.current[pointId] = to;
+                if (isEdition) {
+                    console.info('is edition')
+                    annotationToEditPointsRef.current[pointId] = to;
+                } else {
+                    tempPointRef.current = to;
+                }
             },
             finishCurrentLine: () => {
                 annotationToEditPointsRef.current = [];
@@ -312,15 +316,14 @@ const useAnnotationEngine = ({
             handleEvent((canvas) => {
                 const eventCoords = canvasCoordinateOf(canvas, event);
                 const clickedPointIds = clickedExistingPointsIds(
-                    annotationToEditPointsRef.current.slice(0, annotationToEditPointsRef.current.length - 1),
+                    annotationToEditPointsRef.current,
                     eventCoords,
                 );
-                console.info('up !')
-                console.info('clicked point ids : ', clickedPointIds);
-                console.info('annotationToEdit points : ', annotationToEditPointsRef.current)
+                // console.info('up !')
+                // console.info('clicked point ids : ', clickedPointIds);
+                // console.info('annotationToEdit points : ', annotationToEditPointsRef.current)
                 
                 if (clickedPointIds.length > 0) {
-                    console.info('mouse_up_on_existing_point_event !')
                     onEvent(
                         {
                             type: 'mouse_up_on_existing_point_event',
@@ -352,12 +355,13 @@ const useAnnotationEngine = ({
 
         const handleMouseDown = (event: MouseEvent) =>
             handleEvent((canvas) => {
+                console.info('mouse down');
                 const eventCoords = canvasCoordinateOf(canvas, event);
                 const renderingContext = renderingContextRef.current;
 
                 const matchingAnnotationsId = getMatchingAnnotationsId(annotationsPaths.current, eventCoords, renderingContext);
 
-                if (matchingAnnotationsId.length) {
+                if (matchingAnnotationsId.length && !annotationToEdit) {
                     return onEvent(
                         {
                             type: 'mouse_down_on_annotation_event',
@@ -368,11 +372,13 @@ const useAnnotationEngine = ({
                         operations,
                     )
                 }
-
+                console.info('still in mouse down');
+                
                 const clickedPointIds = clickedExistingPointsIds(
-                    annotationToEditPointsRef.current.slice(0, annotationToEditPointsRef.current.length - 1),
+                    annotationToEditPointsRef.current,
                     eventCoords,
                 );
+                console.info('clickedpointids', clickedPointIds);
 
                 if (clickedPointIds.length > 0) {
                     return onEvent(

@@ -223,6 +223,7 @@ const useEngineStateMachine = (
         }
     }
 
+    //! TO REWRITE
     const createNewPoint = (at: Coordinates, currentGeometry: Coordinates[], operations: Operations) => {
         if (state.current.tempPointIndex === 0) {
             // First point
@@ -280,6 +281,7 @@ const useEngineStateMachine = (
         if (isGeometryComplete(event.currentGeometry.length)) {
             return shapeFinished(event.currentGeometry, operations);
         }
+        //! ICI ?
         createNewPoint(event.at, event.currentGeometry, operations);
         console.info(event.currentGeometry.length)
     }
@@ -350,7 +352,9 @@ const useEngineStateMachine = (
                     break;
                 case 'mouse_up_on_existing_point_event':
                     if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
-                        shapeFinished(event.currentGeometry, operations);
+                        console.info(event.currentGeometry)
+                        console.info(event.currentGeometry.slice(0, event.currentGeometry.length -1))
+                        shapeFinished(event.currentGeometry.slice(0, event.currentGeometry.length -1), operations);
                         break;
                     }
                     // if (!stillOnPreviousPoint(event.pointIds, event.currentGeometry)) {
@@ -380,7 +384,7 @@ const useEngineStateMachine = (
                     break;
                 case 'mouse_move_event':
                     if (state.current.dragPoint !== undefined) {
-                        operations.movePoint(state.current.dragPoint, event.to);
+                        operations.movePoint(state.current.dragPoint, event.to, isModeEdition());
                     }
                     break;
                 case 'mouse_up_on_existing_point_event':
