@@ -7,7 +7,7 @@ import styled from 'styled-components';
 import Button from '../button';
 import { Annotation, Coordinates, StyleData, StyleDataById } from './models';
 import { clickStyle, editStyle, highlightStyle, hoverStyle } from './style/stories';
-import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent, CommonOperations } from './use-annotation-engine';
+import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent } from './use-annotation-engine';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
 
 export default {
@@ -93,12 +93,25 @@ const useSaveAnnotation = () => {
 /**
  * Manages all the necessary states for the Annotation Engine
  */
-const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToEdit: Annotation | undefined, setAnnotationToEdit: React.Dispatch<React.SetStateAction<Annotation | undefined>>, saveAnnotation: SaveAnnotationFunction, refAE: RefObject<Handles>, setSelectedAnnotationId: React.Dispatch<React.SetStateAction<string>>) => {
+const useEngineStateMachine = (
+    availableShapeTypes: Array<string>,
+    annotationToEdit: Annotation | undefined,
+    setAnnotationToEdit: React.Dispatch<React.SetStateAction<Annotation | undefined>>,
+    saveAnnotation: SaveAnnotationFunction,
+    refAE: RefObject<Handles>,
+    setSelectedAnnotationId: React.Dispatch<React.SetStateAction<string>>,
+    styleOps: StyleOperations,
+) => {
     const [numberOfPoints, setNumberOfPoints] = useState(0);
     const [shapeType, setShapeType] = useState(availableShapeTypes[0]);
     const [isShapeClosed, setIsShapeClosed] = useState(true);
     const [currentlyHoveredAnnotationId, setCurrentlyHoveredAnnotationId] = useState('');
-    
+    const {
+        removeStylesFromAnnotationsByStyleNames,
+        setStyleToAnnotationsByIndexes,
+        removeStyleFromAnnotationsByIndexes,
+        setStyleExclusivelyToId,
+    } = styleOps;
 
     const isModeEdition = () => annotationToEdit !== undefined;
     const isModeCreation = () => !isModeEdition() && numberOfPoints > 0;
@@ -233,8 +246,7 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
         operations.finishCurrentLine();
         state.current = initState();
         const id = saveAnnotation(currentGeometry, isShapeClosed);
-        operations.removeStylesFromAnnotationsByStyleNames(clickStyle.name)
-        operations.setStyleToAnnotationsByIndexes(clickStyle, id)
+        setStyleExclusivelyToId(clickStyle, id)
     };
 
     const lastValidatedPoint = (currentGeometry: Coordinates[]): PointId => {
@@ -271,11 +283,11 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
                 // TODO mettre annotation cliquée à la fin dans le tableau
                 // pour que son label soit au-dessus, si collision
                 case 'mouse_down_on_annotation_event':
-                    operations.removeStylesFromAnnotationsByStyleNames(clickStyle.name);
                     setCurrentlyHoveredAnnotationId('');
                     setSelectedAnnotationId(event.annotationsId[0]);
                     // FIXME LATER : determine behavior in case of multiple ids
-                    operations.setStyleToAnnotationsByIndexes(clickStyle, event.annotationsId[0]);
+                    setStyleExclusivelyToId(clickStyle, event.annotationsId[0]);
+                    
                     break;
                 case 'mouse_move_on_annotation_event': {
                     const { annotationsIdsWithStyle } = event;
@@ -287,17 +299,17 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
 
                     if (newHoveredAnnotationId) {
                         if (currentlyHoveredAnnotationId !== newHoveredAnnotationId) {
-                            operations.removeStyleFromAnnotationsByIndexes(currentlyHoveredAnnotationId);
+                            removeStyleFromAnnotationsByIndexes(currentlyHoveredAnnotationId);
                             setCurrentlyHoveredAnnotationId(newHoveredAnnotationId);
                         }
-                        operations.setStyleToAnnotationsByIndexes(hoverStyle, newHoveredAnnotationId);
+                        setStyleToAnnotationsByIndexes(hoverStyle, newHoveredAnnotationId);
                     }
 
                     break;
                 }
                 case 'mouse_move_event':
                     setCurrentlyHoveredAnnotationId('');
-                    operations.removeStylesFromAnnotationsByStyleNames(hoverStyle.name);
+                    removeStylesFromAnnotationsByStyleNames(hoverStyle.name);
                     break;
                 default:
                     break;
@@ -387,16 +399,19 @@ const useEngineStateMachine = (availableShapeTypes: Array<string>, annotationToE
     }
 }
   
-interface ExternalOperations extends CommonOperations {
-    annotationHasStyle(id: string, styleName: string): boolean;
+interface StyleOperations {
     styledAnnotations: StyleDataById;
-    SetStyleExclusivelyToId(style: StyleData, id: string): void;
+    annotationHasStyle(id: string, styleName: string): boolean;
+    setStyleExclusivelyToId(style: StyleData, id: string): void;
+    setStyleToAnnotationsByIndexes(styleData: StyleData, ...annotationsId: string[]): void;
+    removeStyleFromAnnotationsByIndexes(...annotationsId: string[]): void;
+    removeStylesFromAnnotationsByStyleNames(...styleNames: string[]): void;
 }
 
 /**
  * Allows to manage canvas drawing styles from outside the canvas 
  */
-const useExternalOperations = (): ExternalOperations => {
+const useStyleOperations = (): StyleOperations => {
     const [styledAnnotations, setStyledAnnotations] = useState<StyleDataById>(new Map());
 
     const annotationHasStyle = (id: string, styleName: string): boolean => Boolean(styledAnnotations.get(id)?.name === styleName);
@@ -417,24 +432,38 @@ const useExternalOperations = (): ExternalOperations => {
         setStyledAnnotations(newStyledAnnotations);
     };
 
-    const SetStyleExclusivelyToId = (exclusiveStyle: StyleData, annotationId: string): void => {
+    const setStyleExclusivelyToId = (exclusiveStyle: StyleData, annotationId: string): void => {
         const newStyledAnnotations = new Map(styledAnnotations);
+        console.info(newStyledAnnotations === styledAnnotations);
+        console.info('current styledAnno ', styledAnnotations);
         newStyledAnnotations.forEach((style, id) => {
             if (style.name === exclusiveStyle.name) {
                 newStyledAnnotations.delete(id);
             }
         })
         newStyledAnnotations.set(annotationId, exclusiveStyle);
+        console.info('new styledAnno after deletions', newStyledAnnotations);
         setStyledAnnotations(newStyledAnnotations);
     }
 
-    return ({
+    const removeStylesFromAnnotationsByStyleNames = (...styleNames: string[]): void => {
+        const newStyledAnnotations = new Map(styledAnnotations);
+        newStyledAnnotations.forEach((styleData, annotationId) => {
+            if (styleNames.includes(styleData.name)) {
+                newStyledAnnotations.delete(annotationId);
+            }
+        })
+        setStyledAnnotations(newStyledAnnotations);
+    };
+
+    return {
         setStyleToAnnotationsByIndexes,
         removeStyleFromAnnotationsByIndexes,
         annotationHasStyle,
         styledAnnotations,
-        SetStyleExclusivelyToId,
-    })
+        setStyleExclusivelyToId,
+        removeStylesFromAnnotationsByStyleNames,
+    }
 };
 
 const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }) => {
@@ -442,6 +471,7 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
     const refAE = useRef<Handles>(null);
 
     
+    const styleOps = useStyleOperations();
 
     const {
         annotations,
@@ -451,14 +481,21 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
         setSelectedAnnotationId,
     } = useSaveAnnotation();
 
+
     const {
         handleEvent,
         shapeType, setShapeType,
         cancelCreationAndEdition,
-    } = useEngineStateMachine(availableShapeTypes, annotationToEdit, setAnnotationToEdit, saveAnnotation, refAE, setSelectedAnnotationId);
- 
+    } = useEngineStateMachine(availableShapeTypes, annotationToEdit, setAnnotationToEdit, saveAnnotation, refAE, setSelectedAnnotationId, styleOps);
+    
 
-    const {styledAnnotations, setStyleToAnnotationsByIndexes, SetStyleExclusivelyToId, annotationHasStyle, removeStyleFromAnnotationsByIndexes} = useExternalOperations();
+    const { 
+        styledAnnotations,
+        setStyleExclusivelyToId,
+        annotationHasStyle,
+        removeStyleFromAnnotationsByIndexes,
+        setStyleToAnnotationsByIndexes,
+    } = styleOps;
 
     const handleMouseEnter = (id: string): void => {
         if (!annotationHasStyle(id, clickStyle.name)) {
@@ -467,13 +504,14 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
     };
     
     const handleMouseLeave = (id: string): void => {
+        
         if (!annotationHasStyle(id, clickStyle.name)) {
             removeStyleFromAnnotationsByIndexes(id);
         }
     };
 
     const handleClick = (id: string): void => {
-        SetStyleExclusivelyToId(clickStyle, id);
+        setStyleExclusivelyToId(clickStyle, id);
     };
  
     return (

@@ -252,10 +252,7 @@ export const drawCurrentAnnotation = (
 ): void => {
     annotationPoints.forEach((annotationPoint: Coordinates, index: number) => {
         const style = overloadStyle(editStyle, styledPoints.get(`${index}`)?.style)
-
-        if (index !== annotationPoints.length - 1) {
-            drawPoint(renderingContext, annotationPoint, style);
-        }
+        drawPoint(renderingContext, annotationPoint, style);
     });
 
     if (annotationPoints.length > 1) {

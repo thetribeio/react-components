@@ -110,16 +110,10 @@ export interface KeyDownEvent {
     event: KeyboardEvent;
 }
 
-export interface CommonOperations {
-    setStyleToAnnotationsByIndexes(styleData: StyleData, ...annotationsId: string[]): void;
-    removeStyleFromAnnotationsByIndexes(...annotationsId: string[]): void;
-}
-
-export interface Operations extends CommonOperations {
+export interface Operations {
     addPoint(at: Coordinates): PointId;
     setStyleForAnnotationToEdit(annotationStyle: StyleData): void;
     setStyleToPointsByIndexes(styleData: StyleData, ...pointsId: (string | number)[]): void;
-    removeStylesFromAnnotationsByStyleNames(...styleNames: string[]): void;
     removeStyleFromPoints(): void;
     movePoint(pointId: PointId, to: Coordinates): void;
     finishCurrentLine(): void;
@@ -136,7 +130,6 @@ const useAnnotationEngine = ({
 }: UseAnnotationEngineArgs): void => {
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
-    const styledAnnotations = useRef<StyleDataById>(annotationsToStyle);
     const styledPoints = useRef<StyleDataById>(new Map());
     const annotationsPaths = useRef<AnnotationPathDataById>(new Map());
     const annotationToEditStyle = useRef<AnnotationStyle>(defaultStyle);
@@ -239,7 +232,7 @@ const useAnnotationEngine = ({
 
         renderingContextRef.current.clearRect(0, 0, currentCanvasRef.width, currentCanvasRef.height);
 
-        drawAnnotations(renderingContextRef.current, annotationsToDraw, styledAnnotations.current, annotationsPaths.current);
+        drawAnnotations(renderingContextRef.current, annotationsToDraw, annotationsToStyle, annotationsPaths.current);
 
         drawCurrentAnnotation(
             renderingContextRef.current,
@@ -249,7 +242,7 @@ const useAnnotationEngine = ({
             annotationToEditStyle.current,
             annotationToEdit,
         );
-    }, [annotationsToDraw, canvasRef, annotationToEdit]);
+    }, [annotationsToDraw, canvasRef, annotationToEdit, annotationsToStyle]);
 
     useImperativeHandle(ref, () => ({
         cancelCreation() {
@@ -263,8 +256,6 @@ const useAnnotationEngine = ({
     // Initialize canvas
     useEffect(() => {
         const currentCanvasRef = canvasRef.current;
-        styledAnnotations.current = annotationsToStyle;
-
         let delayDraw: Array<(context2d: CanvasRenderingContext2D) => void> = [];
         const operations: Operations = {
             addPoint: (at: Coordinates) => annotationToEditPointsRef.current.push(at) - 1,
@@ -272,25 +263,10 @@ const useAnnotationEngine = ({
             setStyleForAnnotationToEdit: (styleData: StyleData) => {
                 annotationToEditStyle.current = overloadStyle(defaultStyle, styleData.style);
             },
-            setStyleToAnnotationsByIndexes: (styleData: StyleData, ...annotationsId: string[]) => {
-                annotationsId.forEach((annotationId) => {
-                    styledAnnotations.current.set(annotationId, styleData);
-                })
-            },
             setStyleToPointsByIndexes: (styleData: StyleData, ...pointsId: (string | number)[]) => {
                 pointsId.forEach((id) => {
                     styledPoints.current.set(`${id}`, styleData)
                 })
-            },
-            removeStylesFromAnnotationsByStyleNames: (...styleNames: string[]): void => {
-                styledAnnotations.current.forEach((styleData, annotationId, styledAnnotationsMap) => {
-                    if (styleNames.includes(styleData.name)) {
-                        styledAnnotationsMap.delete(annotationId);
-                    }
-                })
-            },
-            removeStyleFromAnnotationsByIndexes: (...annotationsId: string[]): void => {
-                annotationsId.forEach((id) => styledAnnotations.current.delete(id));
             },
             removeStyleFromPoints: (): void => {
                 styledPoints.current = new Map();
@@ -407,7 +383,7 @@ const useAnnotationEngine = ({
               
                 if (matchingAnnotationsId.length) {
                     const annotationsIdsWithStyle = matchingAnnotationsId.map((id) => {
-                        const style = styledAnnotations.current.get(id);
+                        const style = annotationsToStyle.get(id);
 
                         return ({ id, style });
                     })
