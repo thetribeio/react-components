@@ -54,9 +54,10 @@ const Label = styled.label`
 
 type SaveAnnotationFunction = (geometry: Array<Coordinates>, isClosed: boolean) => string;
 
-const useSaveAnnotation = (setSelectedAnnotationId: React.Dispatch<React.SetStateAction<string>>) => {
+const useSaveAnnotation = () => {
     const [annotations, setAnnotations] = useState<Annotation[]>([]);
     const [annotationToEdit, setAnnotationToEdit] = useState<Annotation | undefined>(undefined);
+    const [selectedAnnotationId, setSelectedAnnotationId] = useState('');
 
     const saveAnnotation = (geometry: Array<Coordinates>, isClosed: boolean): string => {
         let id = '';
@@ -84,6 +85,8 @@ const useSaveAnnotation = (setSelectedAnnotationId: React.Dispatch<React.SetStat
         annotations,
         annotationToEdit, setAnnotationToEdit,
         saveAnnotation,
+        selectedAnnotationId,
+        setSelectedAnnotationId,
     }
 }
 
@@ -438,13 +441,15 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
     const availableShapeTypes: Array<string> = ['INACTIVE', 'POINT', 'LINE', 'POLYGON', 'POLYLINE'];
     const refAE = useRef<Handles>(null);
 
-    const [selectedAnnotationId, setSelectedAnnotationId] = useState('');
+    
 
     const {
         annotations,
         annotationToEdit, setAnnotationToEdit,
         saveAnnotation,
-    } = useSaveAnnotation(setSelectedAnnotationId);
+        selectedAnnotationId,
+        setSelectedAnnotationId,
+    } = useSaveAnnotation();
 
     const {
         handleEvent,
