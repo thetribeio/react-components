@@ -1,6 +1,3 @@
-// TODO remove the following eslint rule
-/* eslint-disable jsx-a11y/mouse-events-have-key-events */
-/* eslint-disable jsx-a11y/no-static-element-interactions */
 import { Story, Meta } from '@storybook/react';
 import React, { useEffect, useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
@@ -434,15 +431,12 @@ const useStyleOperations = (): StyleOperations => {
 
     const setStyleExclusivelyToId = (exclusiveStyle: StyleData, annotationId: string): void => {
         const newStyledAnnotations = new Map(styledAnnotations);
-        console.info(newStyledAnnotations === styledAnnotations);
-        console.info('current styledAnno ', styledAnnotations);
         newStyledAnnotations.forEach((style, id) => {
             if (style.name === exclusiveStyle.name) {
                 newStyledAnnotations.delete(id);
             }
         })
         newStyledAnnotations.set(annotationId, exclusiveStyle);
-        console.info('new styledAnno after deletions', newStyledAnnotations);
         setStyledAnnotations(newStyledAnnotations);
     }
 
@@ -512,7 +506,15 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
 
     const handleClick = (id: string): void => {
         setStyleExclusivelyToId(clickStyle, id);
+        setSelectedAnnotationId(id);
     };
+
+    const handleKeyDown = (event: React.KeyboardEvent, id: string) => {
+        if (event.code === 'Space') {
+            setStyleExclusivelyToId(clickStyle, id)
+            setSelectedAnnotationId(id);
+        }
+    }
  
     return (
         <AnnotationsContainer>
@@ -538,12 +540,14 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
             <div style={{ color: 'white' }}>
                 {annotations.map((annotation: Annotation) => (
                     <div key={annotation.id}>
-                       { /* eslint-disable-next-line jsx-a11y/click-events-have-key-events */}
                         <span 
                             onClick={() => handleClick(annotation.id)}
+                            onKeyDown={(event) => handleKeyDown(event, annotation.id)}
                             onMouseEnter={() => handleMouseEnter(annotation.id)}
                             onMouseLeave={() => handleMouseLeave(annotation.id)}
+                            role="button"
                             style={{color: `${annotation.id === selectedAnnotationId ? 'red' : ''}`}}
+                            tabIndex={0}
                         >{annotation.name}{' '}</span>
                         <button onClick={() => {
                             setAnnotationToEdit(annotation);
