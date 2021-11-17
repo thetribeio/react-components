@@ -245,10 +245,6 @@ const useEngineStateMachine = (
             shapeFinished(event.currentGeometry);
         }
     }
-
-    const mouseDownEvent = (operations: Operations) => {
-        operations.setStyleToPointsByIndexes(editStyle, state.current.tempPointIndex);
-    }
     
     const mouseUpEvent = (event: MouseUp, operations: Operations) => {
         if (isGeometryComplete(event.currentGeometry.length)) {
@@ -307,9 +303,9 @@ const useEngineStateMachine = (
                 case 'key_up_event':
                     keyUpEvent(event);
                     break;
+                case 'mouse_down_on_existing_point_event':
                 case 'mouse_down_event':
                     operations.setStyleForTempPoint(editStyle);
-                    mouseDownEvent(operations);
                     break;
                 case 'mouse_move_event':
                     operations.removeStyleFromPointsByStyleNames(highlightStyle.name);
