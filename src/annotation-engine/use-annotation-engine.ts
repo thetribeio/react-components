@@ -116,7 +116,8 @@ export interface Operations {
     setStyleForTempPoint(styleData?: StyleData): void;
     setStyleToPointsByIndexes(styleData: StyleData, ...pointsId: (string | number)[]): void;
     removeStyleFromPointsByStyleNames(...styleNames: string[]): void;
-    movePoint(pointId: PointId, to: Coordinates, isEdition?: boolean): void;
+    movePoint(pointId: PointId, to: Coordinates): void;
+    moveTempPoint(to: Coordinates): void;
     finishCurrentLine(): void;
     drawOnCanvas(draw: (context2d: CanvasRenderingContext2D) => void): void;
 }
@@ -292,12 +293,11 @@ const useAnnotationEngine = ({
                 })
                 styledPointsRef.current = newStyledPoints;
             },
-            movePoint: (pointId: PointId, to: Coordinates, isEdition = false) => {
-                if (isEdition) {
-                    annotationToEditPointsRef.current[pointId] = to;
-                } else {
-                    tempPointRef.current = to;
-                }
+            movePoint: (pointId: PointId, to: Coordinates): void => {
+                annotationToEditPointsRef.current[pointId] = to;
+            },
+            moveTempPoint: (to: Coordinates): void => {
+                tempPointRef.current = to;
             },
             finishCurrentLine: () => {
                 annotationToEditPointsRef.current = [];

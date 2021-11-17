@@ -310,7 +310,7 @@ const useEngineStateMachine = (
                 case 'mouse_move_event':
                     operations.removeStyleFromPointsByStyleNames(highlightStyle.name);
                     // move point under cursor
-                    operations.movePoint(state.current.tempPointIndex, event.to);
+                    operations.moveTempPoint(event.to);
                     break;
                 case 'mouse_up_on_existing_point_event':
                     if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
@@ -339,7 +339,7 @@ const useEngineStateMachine = (
                     break;
                 case 'mouse_move_event':
                     if (state.current.dragPoint !== undefined) {
-                        operations.movePoint(state.current.dragPoint, event.to, isModeEdition());
+                        operations.movePoint(state.current.dragPoint, event.to);
                     }
                     break;
                 case 'mouse_up_on_existing_point_event':
