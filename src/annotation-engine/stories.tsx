@@ -3,8 +3,8 @@ import React, { useEffect, useState, useRef, RefObject } from 'react';
 import styled from 'styled-components';
 import Button from '../button';
 import { Annotation, Coordinates, StyleData, StyleDataById } from './models';
-import { clickStyle, editStyle, hiddenStyle, highlightStyle, hoverStyle } from './style/stories';
-import { Events, Handles, MouseDownEvent, MouseDownOnExistingPointEvent, Operations, PointId, KeyDownEvent, KeyUpEvent, MouseUp } from './use-annotation-engine';
+import { clickStyle, editStyle, highlightStyle, hoverStyle } from './style/stories';
+import { Events, Handles, Operations, PointId, KeyDownEvent, KeyUpEvent, MouseUp } from './use-annotation-engine';
 import AnnotationEngine, { AnnotationEngineProps } from '.';
 
 export default {
@@ -104,7 +104,6 @@ const useEngineStateMachine = (
     const [isShapeClosed, setIsShapeClosed] = useState(true);
     const [currentlyHoveredAnnotationId, setCurrentlyHoveredAnnotationId] = useState('');
     const {
-        removeStylesFromAnnotationsByStyleNames,
         setStyleToAnnotationsByIndexes,
         removeStyleFromAnnotationsByIndexes,
         setStyleExclusivelyToId,
@@ -114,7 +113,6 @@ const useEngineStateMachine = (
     const isModeEdition = () => annotationToEdit !== undefined;
     const isModeCreation = () => !isModeEdition() && numberOfPoints > 0;
     const isModeInactif = () => !isModeCreation() && !isModeEdition();
-    // const [tempPointIsHidden, setTempPointIsHidden] = useState(isModeEdition());
     // key codes map for shape validation (polygon and polylines)
     const shapeFinishedOnKeyCodes = ['Space'];
 
@@ -227,15 +225,12 @@ const useEngineStateMachine = (
 
     const createNewPoint = (at: Coordinates, operations: Operations) => {
         state.current.tempPointIndex = operations.addPoint(at);
-        operations.removeStyleFromPointsByStyleNames(hiddenStyle.name);
-        operations.setStyleToPointsByIndexes(hiddenStyle, state.current.tempPointIndex + 1);
     };
 
-    const shapeFinished = (currentGeometry: Coordinates[], operations: Operations) => {
+    const shapeFinished = (currentGeometry: Coordinates[]) => {
         state.current = initState();
         const id = saveAnnotation(currentGeometry, isShapeClosed);
         setStyleExclusivelyToId(clickStyle, id)
-        operations.removeStyleFromPointsByStyleNames(hiddenStyle.name);
     };
 
     const keyDownEvent = (event: KeyDownEvent) => {
@@ -245,27 +240,21 @@ const useEngineStateMachine = (
         }
     }
 
-    const keyUpEvent = (event: KeyUpEvent, operations: Operations) => {
+    const keyUpEvent = (event: KeyUpEvent) => {
         if (shapeFinishedOnKeyCodes.includes(event.event.code) && isGeometryReadyToBeManuallyCompleted(event.currentGeometry.length)) {
-            shapeFinished(event.currentGeometry, operations);
+            shapeFinished(event.currentGeometry);
         }
     }
 
-    const mouseDownEvent = (event: MouseDownEvent | MouseDownOnExistingPointEvent, operations: Operations) => {
-        operations.removeStyleFromPointsByStyleNames(hiddenStyle.name);
+    const mouseDownEvent = (operations: Operations) => {
         operations.setStyleToPointsByIndexes(editStyle, state.current.tempPointIndex);
-        // setTempPointIsHidden(false);
     }
     
     const mouseUpEvent = (event: MouseUp, operations: Operations) => {
-        // setTempPointIsHidden(true);
-
         if (isGeometryComplete(event.currentGeometry.length)) {
-            return shapeFinished(event.currentGeometry, operations);
+            return shapeFinished(event.currentGeometry);
         }
-
-        operations.setStyleToPointsByIndexes(hiddenStyle, state.current.tempPointIndex + 1)
-
+        
         return createNewPoint(event.at, operations);
     }
     
@@ -306,7 +295,6 @@ const useEngineStateMachine = (
             }
         }
         if (isModeCreation()) {
-            console.info('test')
             switch (event.type) {
                 case 'mouse_move_on_existing_point_event':
                     if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
@@ -317,28 +305,20 @@ const useEngineStateMachine = (
                     keyDownEvent(event);
                     break;
                 case 'key_up_event':
-                    keyUpEvent(event, operations);
+                    keyUpEvent(event);
                     break;
                 case 'mouse_down_event':
-                    mouseDownEvent(event, operations);
+                    mouseDownEvent(operations);
                     break;
                 case 'mouse_move_event':
 
                     operations.removeStyleFromPointsByStyleNames(highlightStyle.name);
                     // move point under cursor
                     operations.movePoint(state.current.tempPointIndex, event.to);
-                    // if (tempPointIsHidden) {
-                    //     operations.setStyleToPointsByIndexes(hiddenStyle, state.current.tempPointIndex);
-                    // } else {
-                    //     operations.removeStyleFromPointsByStyleNames(hiddenStyle.name)
-                    // }
-                    // if (state.current.tempPointIndex !== undefined) {
-
-                    // }
                     break;
                 case 'mouse_up_on_existing_point_event':
                     if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
-                        shapeFinished(event.currentGeometry, operations);
+                        shapeFinished(event.currentGeometry);
                         break;
                     }
                     break;
@@ -349,15 +329,13 @@ const useEngineStateMachine = (
                     // nothing to do
             }
         }
-        //! clic dans le vide va créer un point de plus si edition de point
         if (isModeEdition()) {
-            // operations.removeStyleFromPointsByStyleNames(hiddenStyle.name)
             switch (event.type) {
                 case 'key_down_event':
                     keyDownEvent(event);
                     break;
                 case 'key_up_event':
-                    keyUpEvent(event, operations);
+                    keyUpEvent(event);
                     break;
                 case 'mouse_down_on_existing_point_event':
                     [state.current.dragPoint] = event.pointIds;
@@ -369,7 +347,6 @@ const useEngineStateMachine = (
                     break;
                 case 'mouse_up_on_existing_point_event':
                 case 'mouse_up_event':
-                    console.info(event.currentGeometry)
                     if (shapeType === 'POINT') {
                         saveAnnotation(event.currentGeometry, isShapeClosed);
                     }

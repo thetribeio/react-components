@@ -130,12 +130,10 @@ const useAnnotationEngine = ({
 }: UseAnnotationEngineArgs): void => {
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
-    
     const tempPointRef = useRef<Coordinates | undefined>(undefined);
-    // TODO rename into styledPointsRef, annotationsPathsRef, annotationToEditStyleRef...
-    const styledPoints = useRef<StyleDataById>(new Map());
-    const annotationsPaths = useRef<AnnotationPathDataById>(new Map());
-    const annotationToEditStyle = useRef<AnnotationStyle>(defaultStyle);
+    const styledPointsRef = useRef<StyleDataById>(new Map());
+    const annotationsPathsRef = useRef<AnnotationPathDataById>(new Map());
+    const annotationToEditStyleRef = useRef<AnnotationStyle>(defaultStyle);
     const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 8;
 
     const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
@@ -197,12 +195,9 @@ const useAnnotationEngine = ({
 
     useEffect(() => {
         tempPointRef.current = undefined;
-
-        // #
-        // console.info('anno to edit points', annotationToEdit?.coordinates);
-        annotationsPaths.current.forEach((_annotationPath: AnnotationPathData, id: string) => {
+        annotationsPathsRef.current.forEach((_annotationPath: AnnotationPathData, id: string) => {
             if (!annotations.map((anno) => anno.id).includes(id)) {
-                annotationsPaths.current.delete(id);
+                annotationsPathsRef.current.delete(id);
             }
         })
 
@@ -239,14 +234,14 @@ const useAnnotationEngine = ({
 
         renderingContextRef.current.clearRect(0, 0, currentCanvasRef.width, currentCanvasRef.height);
 
-        drawAnnotations(renderingContextRef.current, annotationsToDraw, annotationsToStyle, annotationsPaths.current);
+        drawAnnotations(renderingContextRef.current, annotationsToDraw, annotationsToStyle, annotationsPathsRef.current);
 
         drawCurrentAnnotation(
             renderingContextRef.current,
             annotationToEditPointsRef.current,
             annotationToEditPointsRef.current === annotationToEdit?.coordinates,
-            styledPoints.current,
-            annotationToEditStyle.current,
+            styledPointsRef.current,
+            annotationToEditStyleRef.current,
             tempPointRef.current,
             annotationToEdit,
         );
@@ -269,26 +264,24 @@ const useAnnotationEngine = ({
             addPoint: (at: Coordinates) => annotationToEditPointsRef.current.push(at) - 1,
  
             setStyleForAnnotationToEdit: (styleData: StyleData) => {
-                annotationToEditStyle.current = overloadStyle(defaultStyle, styleData.style);
+                annotationToEditStyleRef.current = overloadStyle(defaultStyle, styleData.style);
             },
             setStyleToPointsByIndexes: (styleData: StyleData, ...pointsId: (string | number)[]) => {
                 pointsId.forEach((id) => {
-                    styledPoints.current.set(`${id}`, styleData)
+                    styledPointsRef.current.set(`${id}`, styleData)
                 })
             },
             removeStyleFromPointsByStyleNames: (...styleNames: string[]): void => {
-                const newStyledPoints = new Map(styledPoints.current);
+                const newStyledPoints = new Map(styledPointsRef.current);
                 newStyledPoints.forEach((style, pointId) => {
                     if (styleNames.includes(style.name)) {
                         newStyledPoints.delete(pointId);
                     }
                 })
-                styledPoints.current = newStyledPoints;
+                styledPointsRef.current = newStyledPoints;
             },
             movePoint: (pointId: PointId, to: Coordinates, isEdition = false) => {
-                //! ICI !
                 if (isEdition) {
-                    console.info('is edition')
                     annotationToEditPointsRef.current[pointId] = to;
                 } else {
                     tempPointRef.current = to;
@@ -351,11 +344,10 @@ const useAnnotationEngine = ({
 
         const handleMouseDown = (event: MouseEvent) =>
             handleEvent((canvas) => {
-                console.info('mouse down');
                 const eventCoords = canvasCoordinateOf(canvas, event);
                 const renderingContext = renderingContextRef.current;
 
-                const matchingAnnotationsId = getMatchingAnnotationsId(annotationsPaths.current, eventCoords, renderingContext);
+                const matchingAnnotationsId = getMatchingAnnotationsId(annotationsPathsRef.current, eventCoords, renderingContext);
 
                 if (matchingAnnotationsId.length && !annotationToEdit) {
                     return onEvent(
@@ -402,7 +394,7 @@ const useAnnotationEngine = ({
             handleEvent((canvas) => {
                 const eventCoords = canvasCoordinateOf(canvas, event);
                 const renderingContext = renderingContextRef.current;
-                const matchingAnnotationsId = getMatchingAnnotationsId(annotationsPaths.current, eventCoords, renderingContext);
+                const matchingAnnotationsId = getMatchingAnnotationsId(annotationsPathsRef.current, eventCoords, renderingContext);
               
                 if (matchingAnnotationsId.length) {
                     const annotationsIdsWithStyle = matchingAnnotationsId.map((id) => {
