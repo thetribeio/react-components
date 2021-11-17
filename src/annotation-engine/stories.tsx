@@ -369,6 +369,7 @@ const useEngineStateMachine = (
                     break;
                 case 'mouse_up_on_existing_point_event':
                 case 'mouse_up_event':
+                    console.info(event.currentGeometry)
                     if (shapeType === 'POINT') {
                         saveAnnotation(event.currentGeometry, isShapeClosed);
                     }

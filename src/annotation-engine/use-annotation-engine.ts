@@ -196,6 +196,8 @@ const useAnnotationEngine = ({
     };
 
     useEffect(() => {
+        tempPointRef.current = undefined;
+
         // #
         // console.info('anno to edit points', annotationToEdit?.coordinates);
         annotationsPaths.current.forEach((_annotationPath: AnnotationPathData, id: string) => {
@@ -319,10 +321,6 @@ const useAnnotationEngine = ({
                     annotationToEditPointsRef.current,
                     eventCoords,
                 );
-                // console.info('up !')
-                // console.info('clicked point ids : ', clickedPointIds);
-                // console.info('annotationToEdit points : ', annotationToEditPointsRef.current)
-                
                 if (clickedPointIds.length > 0) {
                     onEvent(
                         {
@@ -335,8 +333,6 @@ const useAnnotationEngine = ({
                         operations,
                         );
                     } else {
-                    console.info('AE mouse_up_event')
-                    console.info('currentGeom ', ...annotationToEditPointsRef.current, tempPointRef.current)
                     const currentGeometry = [...annotationToEditPointsRef.current];
                     if (tempPointRef.current) {
                         currentGeometry.push(tempPointRef.current);
@@ -371,14 +367,11 @@ const useAnnotationEngine = ({
                         },
                         operations,
                     )
-                }
-                console.info('still in mouse down');
-                
+                }                
                 const clickedPointIds = clickedExistingPointsIds(
                     annotationToEditPointsRef.current,
                     eventCoords,
                 );
-                console.info('clickedpointids', clickedPointIds);
 
                 if (clickedPointIds.length > 0) {
                     return onEvent(
