@@ -107,6 +107,7 @@ const useEngineStateMachine = (
         setStyleToAnnotationsByIndexes,
         removeStyleFromAnnotationsByIndexes,
         setStyleExclusivelyToId,
+        removeStylesFromAnnotationsByStyleNames,
     } = styleOps;
 
     
@@ -289,6 +290,7 @@ const useEngineStateMachine = (
                 }
                 case 'mouse_move_event':
                     setCurrentlyHoveredAnnotationId('');
+                    removeStylesFromAnnotationsByStyleNames(hoverStyle.name);
                     break;
                 default:
                     break;
