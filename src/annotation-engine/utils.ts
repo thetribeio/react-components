@@ -248,6 +248,7 @@ export const drawCurrentAnnotation = (
     isComplete: boolean,
     styledPoints: StyleDataById,
     editStyle: AnnotationStyle,
+    tempPointStyle?: AnnotationStyle,
     tempPoint?: Coordinates,
     currentAnnotation?: Annotation,
 ): void => {
@@ -255,16 +256,20 @@ export const drawCurrentAnnotation = (
         const style = overloadStyle(editStyle, styledPoints.get(`${index}`)?.style)
         drawPoint(renderingContext, annotationPoint, style);
     });
+    if ( !isComplete && tempPoint) {
+        if (tempPointStyle) {
+            drawPoint(renderingContext, tempPoint, tempPointStyle)
+        }
+        if (annotationPoints.length > 0) {
+            drawLine(renderingContext, annotationPoints[annotationPoints.length - 1], tempPoint, editStyle); 
 
-    if ( !isComplete && tempPoint && annotationPoints.length > 0) {
-        drawLine(renderingContext, annotationPoints[annotationPoints.length - 1], tempPoint, editStyle); 
+        }
     }
     if (annotationPoints.length > 1) {
         for (let i = 1; i < annotationPoints.length; i++) {
             drawLine(renderingContext, annotationPoints[i - 1], annotationPoints[i], editStyle);
         }
     }
-
     if (isComplete) {
         if (currentAnnotation?.isClosed === true) {
             drawLine(renderingContext, annotationPoints[annotationPoints.length - 1], annotationPoints[0], editStyle);

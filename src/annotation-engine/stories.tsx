@@ -308,10 +308,10 @@ const useEngineStateMachine = (
                     keyUpEvent(event);
                     break;
                 case 'mouse_down_event':
+                    operations.setStyleForTempPoint(editStyle);
                     mouseDownEvent(operations);
                     break;
                 case 'mouse_move_event':
-
                     operations.removeStyleFromPointsByStyleNames(highlightStyle.name);
                     // move point under cursor
                     operations.movePoint(state.current.tempPointIndex, event.to);
@@ -323,6 +323,7 @@ const useEngineStateMachine = (
                     }
                     break;
                 case 'mouse_up_event':
+                    operations.setStyleForTempPoint();
                     mouseUpEvent(event, operations);
                     break;
                 default:

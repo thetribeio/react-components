@@ -113,6 +113,7 @@ export interface KeyDownEvent {
 export interface Operations {
     addPoint(at: Coordinates): PointId;
     setStyleForAnnotationToEdit(annotationStyle: StyleData): void;
+    setStyleForTempPoint(styleData?: StyleData): void;
     setStyleToPointsByIndexes(styleData: StyleData, ...pointsId: (string | number)[]): void;
     removeStyleFromPointsByStyleNames(...styleNames: string[]): void;
     movePoint(pointId: PointId, to: Coordinates, isEdition?: boolean): void;
@@ -131,6 +132,7 @@ const useAnnotationEngine = ({
     const renderingContextRef = useRef<CanvasRenderingContext2D | undefined>(undefined);
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
     const tempPointRef = useRef<Coordinates | undefined>(undefined);
+    const tempPointStyleRef = useRef<AnnotationStyle | undefined>(undefined);
     const styledPointsRef = useRef<StyleDataById>(new Map());
     const annotationsPathsRef = useRef<AnnotationPathDataById>(new Map());
     const annotationToEditStyleRef = useRef<AnnotationStyle>(defaultStyle);
@@ -195,6 +197,7 @@ const useAnnotationEngine = ({
 
     useEffect(() => {
         tempPointRef.current = undefined;
+        tempPointStyleRef.current = undefined;
         annotationsPathsRef.current.forEach((_annotationPath: AnnotationPathData, id: string) => {
             if (!annotations.map((anno) => anno.id).includes(id)) {
                 annotationsPathsRef.current.delete(id);
@@ -242,6 +245,7 @@ const useAnnotationEngine = ({
             annotationToEditPointsRef.current === annotationToEdit?.coordinates,
             styledPointsRef.current,
             annotationToEditStyleRef.current,
+            tempPointStyleRef.current,
             tempPointRef.current,
             annotationToEdit,
         );
@@ -265,6 +269,14 @@ const useAnnotationEngine = ({
  
             setStyleForAnnotationToEdit: (styleData: StyleData) => {
                 annotationToEditStyleRef.current = overloadStyle(defaultStyle, styleData.style);
+            },
+            setStyleForTempPoint: (styleData?: StyleData) => {
+                if (styleData) {
+                    tempPointStyleRef.current = overloadStyle(defaultStyle, styleData.style);
+                } else {
+                    tempPointStyleRef.current = undefined;
+                }
+
             },
             setStyleToPointsByIndexes: (styleData: StyleData, ...pointsId: (string | number)[]) => {
                 pointsId.forEach((id) => {
