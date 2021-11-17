@@ -509,7 +509,7 @@ const useAnnotationEngine = ({
                 document.removeEventListener('keydown', handleKeyDown);
             }
         };
-    }, [drawScene, canvasRef, onEvent, annotations, annotationsToStyle]);
+    }, [drawScene, canvasRef, onEvent, annotations, annotationsToStyle, annotationToEdit]);
 };
 
 export default useAnnotationEngine;

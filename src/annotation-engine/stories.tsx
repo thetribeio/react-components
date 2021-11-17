@@ -463,6 +463,7 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
         annotationHasStyle,
         removeStyleFromAnnotationsByIndexes,
         setStyleToAnnotationsByIndexes,
+        removeStylesFromAnnotationsByStyleNames,
     } = styleOps;
 
     const handleMouseEnter = (id: string): void => {
@@ -525,6 +526,7 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
                         <button onClick={() => {
                             setAnnotationToEdit(annotation);
                             setSelectedAnnotationId('');
+                            removeStylesFromAnnotationsByStyleNames(clickStyle.name)
                         }} type="button">
                             EDIT
                         </button>
