@@ -110,9 +110,11 @@ const useEngineStateMachine = (
         setStyleExclusivelyToId,
     } = styleOps;
 
+    
     const isModeEdition = () => annotationToEdit !== undefined;
     const isModeCreation = () => !isModeEdition() && numberOfPoints > 0;
     const isModeInactif = () => !isModeCreation() && !isModeEdition();
+    // const [tempPointIsHidden, setTempPointIsHidden] = useState(isModeEdition());
     // key codes map for shape validation (polygon and polylines)
     const shapeFinishedOnKeyCodes = ['Space'];
 
@@ -200,9 +202,9 @@ const useEngineStateMachine = (
             case 'LINE':
                 return isModeEdition();
             case 'POLYGON':
-                return length - (state.current.tempPointIndex !== undefined ? 1 : 0) >= 3;
+                return length  >= 3;
             case 'POLYLINE':
-                return length - (state.current.tempPointIndex !== undefined ? 1 : 0) >= 2;
+                return length >= 2;
             default:
                 return false;
         }
@@ -223,41 +225,18 @@ const useEngineStateMachine = (
         }
     }
 
-    //! TO REWRITE
-    const createNewPoint = (at: Coordinates, currentGeometry: Coordinates[], operations: Operations) => {
-        if (state.current.tempPointIndex === 0) {
-            // First point
-            operations.addPoint(at);
-        }
-        if (!isGeometryComplete(currentGeometry.length + 1)) {
-            // Create next point ahead & validate current point
-
-            // # tempPointIndex contains the index of the last point
-            state.current.tempPointIndex = operations.addPoint(at);
-        } else {
-            // just validate last point
-            state.current.tempPointIndex = 0;
-        }
-        // operations.setStyleToPointsByIndexes(hiddenStyle, state.current.tempPointIndex ?? 1);
+    const createNewPoint = (at: Coordinates, operations: Operations) => {
+        state.current.tempPointIndex = operations.addPoint(at);
+        operations.removeStyleFromPointsByStyleNames(hiddenStyle.name);
+        operations.setStyleToPointsByIndexes(hiddenStyle, state.current.tempPointIndex + 1);
     };
 
     const shapeFinished = (currentGeometry: Coordinates[], operations: Operations) => {
-        // currentGeometry.splice(state.current.tempPointIndex, 1);
-        // operations.finishCurrentLine();
         state.current = initState();
         const id = saveAnnotation(currentGeometry, isShapeClosed);
         setStyleExclusivelyToId(clickStyle, id)
+        operations.removeStyleFromPointsByStyleNames(hiddenStyle.name);
     };
-
-    const lastValidatedPoint = (currentGeometry: Coordinates[]): PointId => {
-        if (state.current.tempPointIndex === currentGeometry.length - 1) {
-            return currentGeometry.length - 2;
-        }
-
-        return currentGeometry.length - 1;
-    };
-
-    const stillOnPreviousPoint = (onPoints: Array<PointId>, currentGeometry: Array<Coordinates>) => onPoints.includes(lastValidatedPoint(currentGeometry));
 
     const keyDownEvent = (event: KeyDownEvent) => {
         if (event.event.code === 'Space') {
@@ -273,22 +252,25 @@ const useEngineStateMachine = (
     }
 
     const mouseDownEvent = (event: MouseDownEvent | MouseDownOnExistingPointEvent, operations: Operations) => {
-        // operations.removeStyleFromPointsByStyleNames(hiddenStyle.name);
+        operations.removeStyleFromPointsByStyleNames(hiddenStyle.name);
+        operations.setStyleToPointsByIndexes(editStyle, state.current.tempPointIndex);
+        // setTempPointIsHidden(false);
     }
     
     const mouseUpEvent = (event: MouseUp, operations: Operations) => {
-        console.info(event.currentGeometry);
+        // setTempPointIsHidden(true);
+
         if (isGeometryComplete(event.currentGeometry.length)) {
             return shapeFinished(event.currentGeometry, operations);
         }
-        //! ICI ?
-        createNewPoint(event.at, event.currentGeometry, operations);
-        console.info(event.currentGeometry.length)
+
+        operations.setStyleToPointsByIndexes(hiddenStyle, state.current.tempPointIndex + 1)
+
+        return createNewPoint(event.at, operations);
     }
     
     const handleEvent = (event: Events, operations: Operations): void => {
         operations.setStyleForAnnotationToEdit(editStyle);
-        // operations.setStyleToPointsByIndexes(hiddenStyle, state.current.tempPointIndex);
         if (isModeInactif()) {
             switch (event.type) {
                 // TODO mettre annotation cliquée à la fin dans le tableau
@@ -302,7 +284,6 @@ const useEngineStateMachine = (
                     break;
                 case 'mouse_move_on_annotation_event': {
                     const { annotationsIdsWithStyle } = event;
-
                     const hoveredAnnotationsId = annotationsIdsWithStyle
                         .filter((annotation) => annotation?.style?.name !== clickStyle.name)
                         .map((annotation) => annotation.id);
@@ -315,21 +296,19 @@ const useEngineStateMachine = (
                         }
                         setStyleToAnnotationsByIndexes(hoverStyle, newHoveredAnnotationId);
                     }
-
                     break;
                 }
                 case 'mouse_move_event':
                     setCurrentlyHoveredAnnotationId('');
-                    removeStylesFromAnnotationsByStyleNames(hoverStyle.name);
                     break;
                 default:
                     break;
             }
         }
         if (isModeCreation()) {
+            console.info('test')
             switch (event.type) {
                 case 'mouse_move_on_existing_point_event':
-                    // # console.info('current geometry', event.currentGeometry, 'point ids', event.pointIds);
                     if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
                         operations.setStyleToPointsByIndexes(highlightStyle, 0)
                     }
@@ -344,25 +323,24 @@ const useEngineStateMachine = (
                     mouseDownEvent(event, operations);
                     break;
                 case 'mouse_move_event':
+
                     operations.removeStyleFromPointsByStyleNames(highlightStyle.name);
-                    if (state.current.tempPointIndex !== undefined) {
-                        // move point under cursor
-                        operations.movePoint(state.current.tempPointIndex, event.to);
-                    }
+                    // move point under cursor
+                    operations.movePoint(state.current.tempPointIndex, event.to);
+                    // if (tempPointIsHidden) {
+                    //     operations.setStyleToPointsByIndexes(hiddenStyle, state.current.tempPointIndex);
+                    // } else {
+                    //     operations.removeStyleFromPointsByStyleNames(hiddenStyle.name)
+                    // }
+                    // if (state.current.tempPointIndex !== undefined) {
+
+                    // }
                     break;
                 case 'mouse_up_on_existing_point_event':
                     if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
-                        console.info(event.currentGeometry)
-                        console.info(event.currentGeometry.slice(0, event.currentGeometry.length -1))
-                        shapeFinished(event.currentGeometry.slice(0, event.currentGeometry.length -1), operations);
+                        shapeFinished(event.currentGeometry, operations);
                         break;
                     }
-                    // if (!stillOnPreviousPoint(event.pointIds, event.currentGeometry)) {
-                    //     createNewPoint(event.at, event.currentGeometry, operations);
-                    // }
-                    // if (isGeometryComplete(event.currentGeometry.length)) {
-                    //     shapeFinished(event.currentGeometry, operations);
-                    // }
                     break;
                 case 'mouse_up_event':
                     mouseUpEvent(event, operations);
@@ -371,7 +349,9 @@ const useEngineStateMachine = (
                     // nothing to do
             }
         }
+        //! clic dans le vide va créer un point de plus si edition de point
         if (isModeEdition()) {
+            // operations.removeStyleFromPointsByStyleNames(hiddenStyle.name)
             switch (event.type) {
                 case 'key_down_event':
                     keyDownEvent(event);

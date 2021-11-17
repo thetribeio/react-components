@@ -256,8 +256,14 @@ export const drawCurrentAnnotation = (
         drawPoint(renderingContext, annotationPoint, style);
     });
 
-    if ( !isComplete && annotationPoints.length > 0 && tempPoint) {
-        drawLine(renderingContext, annotationPoints[annotationPoints.length - 1], tempPoint, editStyle);
+    if ( !isComplete && tempPoint) {
+        const tempPointStyle = overloadStyle(editStyle, styledPoints.get(`${annotationPoints.length}`)?.style);
+        drawPoint(renderingContext, tempPoint, tempPointStyle);
+        
+        if (annotationPoints.length > 0) {
+            
+            drawLine(renderingContext, annotationPoints[annotationPoints.length - 1], tempPoint, editStyle);
+        }
         
     }
     if (annotationPoints.length > 1) {
