@@ -115,6 +115,7 @@ const useEngineStateMachine = (
     const isModeInactif = () => !isModeCreation() && !isModeEdition();
     // key codes map for shape validation (polygon and polylines)
     const shapeFinishedOnKeyCodes = ['Space'];
+    const cancelOnKeyCodes = ['Escape'];
 
     const initState = () => ({
         dragPoint: undefined,
@@ -243,6 +244,9 @@ const useEngineStateMachine = (
     const keyUpEvent = (event: KeyUpEvent) => {
         if (shapeFinishedOnKeyCodes.includes(event.event.code) && isGeometryReadyToBeManuallyCompleted(event.currentGeometry.length)) {
             shapeFinished(event.currentGeometry);
+        }
+        if (cancelOnKeyCodes.includes(event.event.code)) {
+            cancelCreationAndEdition();
         }
     }
     
