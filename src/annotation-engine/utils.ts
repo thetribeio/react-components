@@ -1,6 +1,7 @@
 /* eslint-disable no-param-reassign */
 
-import { Coordinates, Annotation } from './models';
+import { Coordinates, Annotation, AnnotationStyle, PartialAnnotationStyle, AnnotationPathData, StyleDataById, ShadowStyle, Segment } from './models';
+import defaultStyle from './style/defaultStyleOptions';
 
 export const areCoordinatesInsideCircle = (
     pointCoordinates: Coordinates,
@@ -21,131 +22,192 @@ export const drawRoundRect = (
     width: number,
     height: number,
     radius: number,
-): void => {
-    renderingContext.beginPath();
-    renderingContext.moveTo(coordinates.x + radius, coordinates.y);
-    renderingContext.lineTo(coordinates.x + width - radius, coordinates.y);
-    renderingContext.quadraticCurveTo(
+): Path2D => {
+    const path = new Path2D();
+    path.moveTo(coordinates.x + radius, coordinates.y);
+    path.lineTo(coordinates.x + width - radius, coordinates.y);
+    path.quadraticCurveTo(
         coordinates.x + width,
         coordinates.y,
         coordinates.x + width,
         coordinates.y + radius,
     );
-    renderingContext.lineTo(coordinates.x + width, coordinates.y + height);
-    renderingContext.quadraticCurveTo(
+    path.lineTo(coordinates.x + width, coordinates.y + height - radius);
+    path.quadraticCurveTo(
         coordinates.x + width,
         coordinates.y + height,
-        coordinates.x + width,
+        coordinates.x + width - radius,
         coordinates.y + height,
     );
-    renderingContext.lineTo(coordinates.x, coordinates.y + height);
-    renderingContext.quadraticCurveTo(coordinates.x, coordinates.y + height, coordinates.x, coordinates.y + height);
-    renderingContext.lineTo(coordinates.x, coordinates.y + radius);
-    renderingContext.quadraticCurveTo(coordinates.x, coordinates.y, coordinates.x + radius, coordinates.y);
-    renderingContext.fill();
-    renderingContext.closePath();
+    path.lineTo(coordinates.x + radius, coordinates.y + height);
+    path.quadraticCurveTo(coordinates.x, coordinates.y + height, coordinates.x, coordinates.y + height - radius);
+    path.lineTo(coordinates.x, coordinates.y + radius);
+    path.quadraticCurveTo(coordinates.x, coordinates.y, coordinates.x + radius, coordinates.y);
+    renderingContext.fill(path);
+
+    return path;
 };
 
-const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, to: Coordinates) => {
-    const distanceX = to.x - from.x;
-    const distanceY = to.y - from.y;
+export const overloadStyle = (style: AnnotationStyle, customStyle?: PartialAnnotationStyle): AnnotationStyle => {
+    if(!customStyle) {
+        return style;
+    }
+    
+    const isObject = (item: any) => (item && typeof item === 'object' && !Array.isArray(item));
+
+    const mergeDeep = (target: any, source: any) => {
+        const output = {...target};
+        if (isObject(target) && isObject(source)) {
+            Object.keys(source).forEach(key => {
+                if (isObject(source[key])) {
+                    if (!(key in target))
+                        Object.assign(output, { [key]: source[key] });
+                    else {
+                        output[key] = mergeDeep(target[key], source[key]);
+                    }
+                } else {
+                    Object.assign(output, { [key]: source[key] });
+                }
+            });
+        }
+        
+        return output;
+    };
+
+    return mergeDeep(style, customStyle) as AnnotationStyle;
+};
+
+const applyShadow = (renderingContext: CanvasRenderingContext2D, {blur, color, offsetX, offsetY}: ShadowStyle) => {
+    renderingContext.shadowOffsetX = offsetX;
+    renderingContext.shadowOffsetY = offsetY;
+    renderingContext.shadowColor = color;
+    renderingContext.shadowBlur = blur;
+};
+
+const drawLabel = (renderingContext: CanvasRenderingContext2D, label: string, from: Coordinates, style: AnnotationStyle): Path2D => {
     const textSize = renderingContext.measureText(label);
     renderingContext.save();
-    renderingContext.textAlign = 'left';
-    renderingContext.translate(from.x, from.y);
-    renderingContext.rotate(Math.atan2(distanceY, distanceX));
-    renderingContext.fillStyle = '#FFFFFF';
-    drawRoundRect(renderingContext, { x: -2, y: -20 }, textSize.width + 10, 20, 10);
-    renderingContext.fillStyle = '#0053CC';
-    renderingContext.fillText(label, 2, -5);
+    const { textAlign, textColor, fillColor, shadow } = style.label;
+    renderingContext.textAlign = textAlign;
+    applyShadow(renderingContext, shadow);
+    renderingContext.fillStyle = fillColor;
+    const path = drawRoundRect(renderingContext, { x: from.x - 2, y: from.y -20 }, textSize.width + 10, 20, 5);
     renderingContext.restore();
+    renderingContext.save();
+    renderingContext.fillStyle = textColor;
+    renderingContext.fillText(label, from.x + 2, from.y -5);
+    renderingContext.restore();
+
+    return path;
+};
+
+const getStyle = (annotationId: string, styledAnnotations?: StyleDataById): AnnotationStyle => {
+    const customStyle = styledAnnotations?.get(annotationId)?.style;
+    if (!styledAnnotations || !customStyle) {
+        return defaultStyle;
+    }
+    
+    return overloadStyle(defaultStyle, customStyle);
+
 };
 
 export const drawPoint = (
-    type: 'SELECTED' | 'UNSELECTED' | 'HIGHLIGHTED',
     renderingContext: CanvasRenderingContext2D,
     coordinates: Coordinates,
-): void => {
-    renderingContext.beginPath();
+    style: AnnotationStyle = defaultStyle,
+): Path2D => {
 
+    const pointPath = new Path2D();
+    const { strokeColor, width, outerRadius, innerRadius, fillColor } = style.point;
+    const { shadow } = style.label;
     // stroke and line
-    if (type === 'SELECTED') {
-        renderingContext.strokeStyle = '#FFF';
-        renderingContext.lineWidth = 1;
-    } else if (type === 'HIGHLIGHTED' || type === 'UNSELECTED') {
-        renderingContext.strokeStyle = '#FFFFFF95';
-        renderingContext.lineWidth = 2;
-    }
-
+    renderingContext.strokeStyle = strokeColor;
+    renderingContext.lineWidth = width;
+  
     // arc
-    if (type === 'UNSELECTED') {
-        renderingContext.arc(coordinates.x, coordinates.y, 7, 0, Math.PI * 2, true);
-    } else if (type === 'SELECTED') {
-        renderingContext.arc(coordinates.x, coordinates.y, 8, 0, Math.PI * 2, true);
-    } else if (type === 'HIGHLIGHTED') {
-        renderingContext.arc(coordinates.x, coordinates.y, 14, 0, Math.PI * 2, true);
-    }
-
-    renderingContext.stroke();
-
-    if (type === 'SELECTED' || type === 'UNSELECTED') {
-        renderingContext.strokeStyle = '#000';
-    }
-
-    renderingContext.closePath();
-
-    renderingContext.beginPath();
-
+    renderingContext.save();
+    applyShadow(renderingContext, shadow);
+    pointPath.arc(coordinates.x, coordinates.y, outerRadius, 0, Math.PI * 2, true);
+    renderingContext.stroke(pointPath);
+    renderingContext.restore();
+  
     // fill
-    if (type === 'SELECTED' || type === 'HIGHLIGHTED') {
-        renderingContext.fillStyle = '#0053CC66';
-    } else if (type === 'UNSELECTED') {
-        renderingContext.fillStyle = '#0053CC30';
-    }
-
+    renderingContext.fillStyle = fillColor;
+ 
     // arc
-    if (type === 'SELECTED') {
-        renderingContext.arc(coordinates.x, coordinates.y, 8, 0, Math.PI * 2, true);
-    } else if (type === 'UNSELECTED') {
-        renderingContext.arc(coordinates.x, coordinates.y, 5, 0, Math.PI * 2, true);
-    } else if (type === 'HIGHLIGHTED') {
-        renderingContext.arc(coordinates.x, coordinates.y, 12, 0, Math.PI * 2, true);
-    }
+    pointPath.arc(coordinates.x, coordinates.y, innerRadius, 0, Math.PI * 2, true);
 
-    renderingContext.fill();
+    renderingContext.fill(pointPath);
 
-    if (type === 'SELECTED' || type === 'UNSELECTED') {
-        renderingContext.strokeStyle = '#000';
-    }
-
-    renderingContext.closePath();
+    return pointPath;
 };
 
 export const drawLine = (
-    type: 'SELECTED' | 'UNSELECTED',
     renderingContext: CanvasRenderingContext2D,
     startCoordinates: Coordinates,
     endCoordinates: Coordinates,
-): void => {
-    renderingContext.beginPath();
+    style: AnnotationStyle = defaultStyle,
+    shapePath: Path2D = new Path2D()
+): Path2D => {
 
-    if (type === 'SELECTED') {
-        renderingContext.strokeStyle = '#0053CC';
-    } else if (type === 'UNSELECTED') {
-        renderingContext.strokeStyle = '#FFFFFF';
-        renderingContext.lineCap = 'round';
-    }
+    const { strokeColor, cap, width } = style.line;
+    const { shadow } = style.label;
+    renderingContext.strokeStyle = strokeColor;
+    renderingContext.lineCap = cap;
+    renderingContext.save()
+    applyShadow(renderingContext, shadow);
 
-    renderingContext.moveTo(startCoordinates.x, startCoordinates.y);
-    renderingContext.lineTo(endCoordinates.x, endCoordinates.y);
-    renderingContext.lineWidth = 2;
-    renderingContext.stroke();
+    shapePath.moveTo(startCoordinates.x, startCoordinates.y);
+    shapePath.lineTo(endCoordinates.x, endCoordinates.y);
+    renderingContext.lineWidth = width;
+    renderingContext.stroke(shapePath);
+    renderingContext.restore();
 
-    renderingContext.closePath();
+    return shapePath;
 };
 
-export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[]): void => {
+export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, annotations: Annotation[], styledAnnotations: StyleDataById, annotationsPaths: Map<string, AnnotationPathData>): void => {
     annotations.forEach((annotation) => {
+        const getHighestPoint = (coordinates: Coordinates[]): Coordinates => coordinates.reduce((coord1, coord2) => {
+            if (coord1.y < coord2.y) {
+                return coord1;
+            }
+
+            return coord2;
+        });
+
+        const highestPoint = getHighestPoint(annotation.coordinates)
+        const style = getStyle(annotation.id, styledAnnotations);
+
+        const getLabelCoordinates = (middlePoint: Coordinates): {firstPoint: Coordinates, secondPoint: Coordinates} => {
+            const textSize = renderingContext.measureText(annotation.name);
+
+            return ({
+                firstPoint: {
+                    x: middlePoint.x - textSize.width / 2,
+                    y: middlePoint.y - 10,
+                },
+                secondPoint: {
+                    x: middlePoint.x + textSize.width / 2,
+                    y: middlePoint.y - 10,
+                }
+            });
+        };
+
+        const { firstPoint } = getLabelCoordinates(highestPoint);
+        let pointPath: Path2D;
+
+        if (annotation.coordinates.length === 1) {
+            pointPath = drawPoint(renderingContext, highestPoint, style);
+            const labelPath = drawLabel(renderingContext, annotation.name, firstPoint, style);
+
+            return annotationsPaths.set(annotation.id, {
+                label: labelPath,
+                point: pointPath,
+            });
+        }
+
+        const linesPath: Path2D[] = [];
         let previousCoordinates: Coordinates | undefined =
             annotation.coordinates.length > 2 ? annotation.coordinates[annotation.coordinates.length - 1] : undefined;
 
@@ -153,62 +215,63 @@ export const drawAnnotations = (renderingContext: CanvasRenderingContext2D, anno
             if (previousCoordinates) {
                 if (annotation.isClosed === false) {
                     if (index > 0) {
-                        drawLine('UNSELECTED', renderingContext, previousCoordinates, coordinates);
+                        linesPath.push(drawLine(renderingContext, previousCoordinates, coordinates, style));
                     }
                 } else {
-                    drawLine('UNSELECTED', renderingContext, previousCoordinates, coordinates);
+                    linesPath.push(drawLine(renderingContext, previousCoordinates, coordinates, style));
                 }
             }
-
             previousCoordinates = coordinates;
         });
 
-        if (annotation.coordinates.length === 1) {
-            const middlePoint = annotation.coordinates[0];
-            const textSize = renderingContext.measureText(annotation.name);
-            const firstPoint = {
-                x: middlePoint.x - textSize.width / 2,
-                y: middlePoint.y - 10,
-            };
-            const secondPoint = {
-                x: middlePoint.x + textSize.width / 2,
-                y: middlePoint.y - 10,
-            };
-            drawPoint('UNSELECTED', renderingContext, middlePoint);
-            drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
-        }
-        if (annotation.coordinates.length >= 2) {
-            const firstPoint = annotation.coordinates[0];
-            const secondPoint = annotation.coordinates[1];
-            drawLabel(renderingContext, annotation.name, firstPoint, secondPoint);
-        }
+        const labelPath = drawLabel(renderingContext, annotation.name, firstPoint, style);
+
+        return annotationsPaths.set(annotation.id, {
+            label: labelPath,
+            lines: linesPath,
+        });
     });
 };
 
 export const drawCurrentAnnotation = (
     renderingContext: CanvasRenderingContext2D,
     annotationPoints: Coordinates[],
-    isComplete: boolean,
-    annotationHighlightPointIndex?: number,
-    currentAnnotation?: Annotation,
+    editStyle: AnnotationStyle,
+    styleForPointsToEdit?: StyleDataById,
+    annotationToEdit?: Annotation,
 ): void => {
     annotationPoints.forEach((annotationPoint: Coordinates, index: number) => {
-        if (index === annotationHighlightPointIndex) {
-            drawPoint('HIGHLIGHTED', renderingContext, annotationPoint);
-        } else {
-            drawPoint('SELECTED', renderingContext, annotationPoint);
-        }
+        const style = overloadStyle(editStyle, styleForPointsToEdit?.get(`${index}`)?.style)
+        drawPoint(renderingContext, annotationPoint, style);
     });
+ 
+    const getSegmentsToDraw = (coordinates: Coordinates[], isClosed?: boolean): Segment[] => {
+        const segments = coordinates.reduce((acc: Coordinates[][], coord: Coordinates) => {
+            if (acc[acc.length - 1]?.length === 1) {
+                acc[acc.length - 1].push(coord);
+            }
+            acc.push([coord]);
 
-    if (annotationPoints.length > 1) {
-        for (let i = 1; i < annotationPoints.length; i++) {
-            drawLine('SELECTED', renderingContext, annotationPoints[i - 1], annotationPoints[i]);
-        }
-    }
+            return acc;
+        }, []);
 
-    if (isComplete) {
-        if (currentAnnotation?.isClosed === true) {
-            drawLine('SELECTED', renderingContext, annotationPoints[annotationPoints.length - 1], annotationPoints[0]);
+        if (segments[segments.length - 1]?.length === 1) {
+            segments.pop();
         }
+
+        if (isClosed) {
+            segments.push([coordinates[coordinates.length - 1], coordinates[0]])
+        }
+
+        return segments as Segment[];
+    };
+
+    let segments: Segment[];
+
+    if (annotationToEdit) {
+        segments = getSegmentsToDraw(annotationToEdit.coordinates, annotationToEdit.isClosed);
+    } else {
+        segments = getSegmentsToDraw(annotationPoints);
     }
+    segments.forEach((segment) => drawLine(renderingContext, segment[0], segment[1], editStyle))
 };
