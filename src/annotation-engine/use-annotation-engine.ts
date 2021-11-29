@@ -23,8 +23,8 @@ export type Events =
     | MouseDownEvent
     | MouseDownOnExistingPointEvent
     | MouseMoveOnExistingPointEvent
-    | MouseDownOnLabelEvent
-    | MouseMoveOnLabelEvent
+    | MouseDownOnAnnotationEvent
+    | MouseMoveOnAnnotationEvent
     | MouseMove
     | MouseUp
     | KeyUpEvent
@@ -49,17 +49,21 @@ export interface MouseDownOnExistingPointEvent {
     event: MouseEvent;
 }
 
-export interface MouseDownOnLabelEvent {
+export interface MouseDownOnAnnotationEvent {
     type: 'mouse_down_on_annotation_event';
     at: Coordinates;
     annotationsId: string[];
+    pointIds: Array<PointId>;
+    currentGeometry: Array<Coordinates>;
     event: MouseEvent;
 }
 
-export interface MouseMoveOnLabelEvent {
+export interface MouseMoveOnAnnotationEvent {
     type: 'mouse_move_on_annotation_event';
     at: Coordinates;
+    currentGeometry: Array<Coordinates>;
     annotationsIdsWithStyle: AnnotationIdWithStyleData[];
+    pointIds: Array<PointId>;
     event: MouseEvent;
 }
 
@@ -333,21 +337,25 @@ const useAnnotationEngine = ({
 
                 const matchingAnnotationsId = getMatchingAnnotationsId(annotationsPathsRef.current, eventCoords, renderingContext);
 
+                const clickedPointIds = clickedExistingPointsIds(
+                    annotationToEditPointsRef.current,
+                    eventCoords,
+                );
+
                 if (matchingAnnotationsId.length && !annotationToEdit) {
                     return onEvent(
                         {
                             type: 'mouse_down_on_annotation_event',
                             at: eventCoords,
                             event,
+                            pointIds: clickedPointIds,
                             annotationsId: matchingAnnotationsId,
+                            currentGeometry: [...annotationToEditPointsRef.current],
                         },
                         operations,
                     )
                 }                
-                const clickedPointIds = clickedExistingPointsIds(
-                    annotationToEditPointsRef.current,
-                    eventCoords,
-                );
+                
 
                 if (clickedPointIds.length > 0) {
                     return onEvent(
@@ -379,6 +387,7 @@ const useAnnotationEngine = ({
                 const eventCoords = canvasCoordinateOf(canvas, event);
                 const renderingContext = renderingContextRef.current;
                 const matchingAnnotationsId = getMatchingAnnotationsId(annotationsPathsRef.current, eventCoords, renderingContext);
+                const isMoveOnExistingPointsIdx = detectMoveOnExistingPoints(annotationToEditPointsRef.current, eventCoords);
                 if (matchingAnnotationsId.length) {
                     const annotationsIdsWithStyle = matchingAnnotationsId.map((id) => {
                         const style = styleForAnnotations.get(id);
@@ -390,14 +399,14 @@ const useAnnotationEngine = ({
                         {
                             type: 'mouse_move_on_annotation_event',
                             at: eventCoords,
+                            currentGeometry: [...annotationToEditPointsRef.current],
                             event,
                             annotationsIdsWithStyle,
+                            pointIds: isMoveOnExistingPointsIdx,
                         },
                         operations,
                     )
                 }
-
-                const isMoveOnExistingPointsIdx = detectMoveOnExistingPoints(annotationToEditPointsRef.current, eventCoords);
 
                 if (isMoveOnExistingPointsIdx.length > 0) {
                     return onEvent(
@@ -415,7 +424,7 @@ const useAnnotationEngine = ({
                 return onEvent(
                     {
                         type: 'mouse_move_event',
-                        to: canvasCoordinateOf(canvas, event),
+                        to: eventCoords,
                         currentGeometry: [...annotationToEditPointsRef.current],
                         event,
                     },

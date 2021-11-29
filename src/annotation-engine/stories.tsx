@@ -292,17 +292,14 @@ const useEngineStateMachine = (
         }
         if (isModeCreation()) {
             switch (event.type) {
-                case 'mouse_move_on_existing_point_event':
-                    if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
-                        styleOps.setStyleExclusivelyToPointId(highlightStyle, '0');
-                    }
-                    break;
+                
                 case 'key_down_event':
                     keyDownEvent(event);
                     break;
                 case 'key_up_event':
                     keyUpEvent(event);
                     break;
+                case 'mouse_down_on_annotation_event':
                 case 'mouse_down_on_existing_point_event':
                 case 'mouse_down_event':
                     if (event.currentGeometry.length === 0) {
@@ -310,6 +307,20 @@ const useEngineStateMachine = (
                         styleOps.setStyleExclusivelyToPointId(hiddenStyle, '0');
                     }
                     styleOps.removeStyleFromPointsByStyleNames(hiddenStyle.name);
+                    break;
+                case 'mouse_move_on_existing_point_event':
+                    if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
+                        styleOps.setStyleExclusivelyToPointId(highlightStyle, '0');
+                    }
+                    break;
+                case 'mouse_move_on_annotation_event':
+                    if (isPolygonReadyToBeManuallyCompletedByClickOnFirstPoint(event.currentGeometry, event.pointIds)) {
+                        styleOps.setStyleExclusivelyToPointId(highlightStyle, '0');
+                    } else {
+                        styleOps.removeStyleFromPointsByStyleNames(highlightStyle.name)
+                    }
+                    // move point under cursor
+                    operations.movePoint(event.currentGeometry.length - 1, event.at);
                     break;
                 case 'mouse_move_event':
                     styleOps.removeStyleFromPointsByStyleNames(highlightStyle.name)
