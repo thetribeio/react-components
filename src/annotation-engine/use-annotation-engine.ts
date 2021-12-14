@@ -139,7 +139,7 @@ const useAnnotationEngine = ({
     const annotationToEditPointsRef = useRef<Coordinates[]>([]);
     const annotationsPathsRef = useRef<AnnotationPathDataById>(new Map());
     const annotationToEditStyleRef = useRef<AnnotationStyle>(defaultStyle);
-    const MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION = 8;
+    const EXISTING_POINT_RADIUS_DETECTION = 8;
 
     const canvasCoordinateOf = (canvas: HTMLCanvasElement, event: MouseEvent): Coordinates => {
         const rect = canvas.getBoundingClientRect();
@@ -187,7 +187,7 @@ const useAnnotationEngine = ({
         return coords
             .map((coordinate, idx) => ({ coordinate, idx }))
             .filter(({ coordinate }) =>
-                areCoordinatesInsideCircle(coordinate, moveOn, MOVE_ON_EXISTING_POINTS_RADIUS_DETECTION),
+                areCoordinatesInsideCircle(coordinate, moveOn, EXISTING_POINT_RADIUS_DETECTION),
             )
             .map(({ idx }) => idx);
     };
@@ -282,7 +282,7 @@ const useAnnotationEngine = ({
     
             return newCoordinates
                 .map((coordinate, idx) => ({ coordinate, idx }))
-                .filter(({ coordinate }) => areCoordinatesInsideCircle(coordinate, clickAt, 7))
+                .filter(({ coordinate }) => areCoordinatesInsideCircle(coordinate, clickAt, EXISTING_POINT_RADIUS_DETECTION))
                 .map(({ idx }) => idx);
         }
 
