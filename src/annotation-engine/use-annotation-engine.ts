@@ -475,7 +475,7 @@ const useAnnotationEngine = ({
                 );
             });
 
-        const handleContextMenuKey = (event: MouseEvent) =>
+        const handleContextMenu = (event: MouseEvent) =>
             handleEvent(() => {
                     onEvent(
                         {
@@ -496,7 +496,7 @@ const useAnnotationEngine = ({
                 currentCanvasRef.addEventListener('wheel', handleMouseWheel);
                 document.addEventListener('keyup', handleKeyUp);
                 document.addEventListener('keydown', handleKeyDown);
-                currentCanvasRef.addEventListener("contextmenu", handleContextMenuKey);
+                currentCanvasRef.addEventListener("contextmenu", handleContextMenu);
                 currentCanvasRef.width = currentCanvasRef.offsetWidth;
                 currentCanvasRef.height = currentCanvasRef.offsetHeight;
                 renderingContextRef.current = canvasRenderingContext;
@@ -511,7 +511,7 @@ const useAnnotationEngine = ({
                 currentCanvasRef.removeEventListener('mousedown', handleMouseDown);
                 currentCanvasRef.removeEventListener('mousemove', handleMouseMove);
                 currentCanvasRef.removeEventListener('wheel', handleMouseWheel);
-                currentCanvasRef.removeEventListener("contextmenu", handleContextMenuKey);
+                currentCanvasRef.removeEventListener("contextmenu", handleContextMenu);
                 document.removeEventListener('keyup', handleKeyUp);
                 document.removeEventListener('keydown', handleKeyDown);
             }
