@@ -121,7 +121,6 @@ export interface KeyDownEvent {
 
 export interface contextMenuEvent {
     type: 'context_menu_event';
-    at: Coordinates;
     event: MouseEvent;
 }
 
@@ -477,12 +476,10 @@ const useAnnotationEngine = ({
             });
 
         const handleContextMenuKey = (event: MouseEvent) =>
-            handleEvent((canvas) => {
-                const eventCoords = canvasCoordinateOf(canvas, event);
+            handleEvent(() => {
                     onEvent(
                         {
                             type: 'context_menu_event',
-                            at: eventCoords,
                             event,
                         },
                         operations,

@@ -65,7 +65,6 @@ const BasicAnnotationEngine: FC<AnnotationEngineProps> = ({
                 }
                 break;
             case 'context_menu_event':
-                    console.info('contextmenu', event)
                     event.event.preventDefault()
                     break
             case 'mouse_up_on_existing_point_event':
