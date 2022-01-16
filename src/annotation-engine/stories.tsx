@@ -52,7 +52,6 @@ const Label = styled.label`
 const InnerContent = styled.div`
     width: fit-content;
     height: fit-content;
-    align-self: flex-start;
     padding: 10px;
     box-sizing: content-box;
     margin: 12px auto;
@@ -547,7 +546,7 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
                 styleForAnnotations={styleOps.styleForAnnotations}
                 styleForPointsToEdit={styleOps.styleForPointsToEdit}
             >
-                <InnerContent>Inner container</InnerContent>
+                {/* <InnerContent>Inner container</InnerContent> */}
             </StyledAnnotationEngine>
             <ActionContainer>
                 <Label>Type de forme</Label>

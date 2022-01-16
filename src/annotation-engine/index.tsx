@@ -52,7 +52,7 @@ const AnnotationEngine: FC<AnnotationEngineProps> = forwardRef(
 
         return (
             <Container className={className}>
-                <InnerContainer>{ children }</InnerContainer>
+                {children && <InnerContainer>{ children }</InnerContainer>}
                 <Image src={backgroundImagePath} />
                 {foregroundImagePath && <Image src={foregroundImagePath} />}
                 <Canvas ref={cRef} id={id} />
