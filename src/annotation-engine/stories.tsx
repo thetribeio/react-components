@@ -546,7 +546,7 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
                 styleForAnnotations={styleOps.styleForAnnotations}
                 styleForPointsToEdit={styleOps.styleForPointsToEdit}
             >
-                {/* <InnerContent>Inner container</InnerContent> */}
+                <InnerContent>Inner container</InnerContent>
             </StyledAnnotationEngine>
             <ActionContainer>
                 <Label>Type de forme</Label>
