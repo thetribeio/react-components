@@ -49,6 +49,18 @@ const Label = styled.label`
     color: white;
 `;
 
+const InnerContent = styled.div`
+    width: fit-content;
+    height: fit-content;
+    align-self: flex-start;
+    padding: 10px;
+    box-sizing: content-box;
+    margin: 12px auto;
+    background-color: wheat;
+    color: black;
+    border-radius: 12px;
+`;
+
 type SaveAnnotationFunction = (geometry: Array<Coordinates>, isClosed: boolean) => string;
 
 const useSaveAnnotation = () => {
@@ -534,7 +546,9 @@ const RoadcareBehaviorTemplate: Story<StyledProps> = ({ width, height, ...args }
                 styleForAnnotationToEdit={styleForAnnotationToEdit}
                 styleForAnnotations={styleOps.styleForAnnotations}
                 styleForPointsToEdit={styleOps.styleForPointsToEdit}
-            />
+            >
+                <InnerContent>Inner container</InnerContent>
+            </StyledAnnotationEngine>
             <ActionContainer>
                 <Label>Type de forme</Label>
                 <select onChange={(event) => setShapeType(event.target.value)} value={shapeType}>
