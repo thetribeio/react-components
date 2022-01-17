@@ -50,14 +50,14 @@ const Label = styled.label`
 `;
 
 const InnerContent = styled.div`
-    width: fit-content;
-    height: fit-content;
-    padding: 10px;
-    box-sizing: content-box;
-    margin: 12px auto;
     background-color: wheat;
-    color: black;
     border-radius: 12px;
+    box-sizing: content-box;
+    color: black;
+    height: fit-content;
+    margin: 12px auto;
+    padding: 10px;
+    width: fit-content;
 `;
 
 type SaveAnnotationFunction = (geometry: Array<Coordinates>, isClosed: boolean) => string;
