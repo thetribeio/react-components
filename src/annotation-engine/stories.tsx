@@ -371,6 +371,9 @@ const useEngineStateMachine = (
                         mouseUpEvent(event, operations);
                     }
                     break;
+                case 'context_menu_event':
+                        event.event.preventDefault()
+                        break
                 default:
                     // nothing to do
             }

@@ -433,7 +433,6 @@ const useAnnotationEngine = ({
                         operations,
                     );
                 }
-
                 return onEvent(
                     {
                         type: 'mouse_move_event',
@@ -492,7 +491,6 @@ const useAnnotationEngine = ({
                     operations,
                 );
             });
-
         if (currentCanvasRef) {
             const canvasRenderingContext = currentCanvasRef.getContext('2d');
 
